@@ -456,3 +456,32 @@ const profileAwareTenantLoader=loadTenantProfile;loadTenantProfile=async functio
 // Paid rows already communicate their state in the status column; removing the
 // duplicate action prevents long RU/EN labels from colliding with neighbouring cells.
 const collisionSafePaymentRender=render;render=function(){collisionSafePaymentRender();document.querySelectorAll('#paymentTableRows .payment-row').forEach(row=>{const tenant=tenants[Number(row.dataset.index)];if(paymentStatusCode(tenant)==='PAID')row.querySelector('.payment-actions .paid')?.remove()});if(localeMessages[activeLanguage])translateDynamicInterface()};
+
+// Single source of truth for active tenants and live payments.
+function tenantContractIsActive(tenant,now=new Date()){
+  if(!tenant||tenant.terminated||tenant.terminationAt||tenant.payment==='Feshedildi'||tenant.paymentCode==='TERMINATED')return false;
+  if(!tenant.contractEnd)return true;
+  const end=new Date(`${tenant.contractEnd}T23:59:59`);return !Number.isNaN(end.valueOf())&&end>=now;
+}
+function activeTenantRecords(){return tenants.filter(tenant=>tenantContractIsActive(tenant))}
+function livePaymentRecords(){return activeTenantRecords().filter(tenant=>!tenant.paymentDeleted&&tenant.payment!=='Silindi'&&tenant.paymentCode!=='DELETED')}
+function emptyStateMarkup({kind,title,description,action=false}){return `<div class="data-empty-state" data-empty-kind="${kind}"><span class="data-empty-icon">${inlineIcon(kind==='tenants'?'users':'wallet')}</span><div><b>${title}</b><p>${description}</p></div>${action?'<button type="button" class="new-button empty-state-action">'+inlineIcon('plus')+' Yeni kiracı ekle</button>':''}</div>`}
+function syncDashboardAndEmptyStates(){
+  const active=activeTenantRecords(),payments=livePaymentRecords(),pending=payments.filter(tenant=>paymentStatusCode(tenant)!=='PAID');
+  if($('tenantCount'))$('tenantCount').textContent=active.length;
+  if($('activeTenantNum'))$('activeTenantNum').innerHTML=`${active.length} <span>${localeMessages[activeLanguage]?tr('common.person'):'kişi'}</span>`;
+  if($('paymentCount'))$('paymentCount').textContent=pending.length;
+  const paidPayments=payments.filter(tenant=>paymentStatusCode(tenant)==='PAID'),expectedAmount=payments.reduce((sum,tenant)=>sum+Number(tenant.rent||0),0),paidAmount=paidPayments.reduce((sum,tenant)=>sum+Number(tenant.rent||0),0),summary=document.querySelectorAll('.payment-summary b');
+  if(summary.length>=3){summary[0].textContent=cash(expectedAmount);summary[1].textContent=cash(paidAmount);summary[2].textContent=cash(Math.max(0,expectedAmount-paidAmount))}
+  if($('expectedPaymentDetail'))$('expectedPaymentDetail').textContent=localeMessages[activeLanguage]?tr('payments.tenantPayments',{count:payments.length}):`${payments.length} kiracı · ${payments.length} ödeme`;
+  if($('collectedPaymentDetail'))$('collectedPaymentDetail').textContent=localeMessages[activeLanguage]?tr('payments.collectionRate',{rate:payments.length?Math.round(paidPayments.length/payments.length*100):0}):`%${payments.length?Math.round(paidPayments.length/payments.length*100):0} tahsilat oranı`;
+  if($('remainingPaymentDetail'))$('remainingPaymentDetail').textContent=pending.length?(localeMessages[activeLanguage]?tr('payments.waitingCount',{count:pending.length}):`${pending.length} ödeme bekliyor`):(localeMessages[activeLanguage]?tr('dashboard.noPending'):'Bekleyen ödeme yok');
+  const activeCard=$('activeTenantNum')?.closest('.metric-card');if(activeCard){const note=activeCard.querySelector('small');if(note)note.textContent=active.length?(localeMessages[activeLanguage]?tr('dashboard.activeUpdated',{count:active.length}):`${active.length} aktif kiracı`):(localeMessages[activeLanguage]?tr('dashboard.addFirst'):'Kayıt ekleyerek başlayın')}
+  const tenantRows=$('tenantTableRows');if(tenantRows&&!tenants.length)tenantRows.innerHTML=emptyStateMarkup({kind:'tenants',title:'Henüz kiracı eklenmedi.',description:'İlk kiracınızı ekleyerek başlayın.',action:true});
+  const paymentRows=$('paymentTableRows');if(paymentRows&&!payments.length){paymentRows.innerHTML=emptyStateMarkup({kind:'payments',title:'Henüz ödeme kaydı yok.',description:active.length?'Aktif kiracıların ödeme planları burada listelenecek.':'Önce bir kiracı ekleyin, ödemeler otomatik burada listelenecek.'});const filterEmpty=$('paymentFilterEmpty');if(filterEmpty)filterEmpty.hidden=true}
+  document.querySelectorAll('.empty-state-action').forEach(button=>{button.onclick=()=>$('newTenantBtn2')?.click()});
+  if(localeMessages[activeLanguage])paintIcons();
+}
+const consistencyRender=render;render=function(){consistencyRender();syncDashboardAndEmptyStates()};
+const consistencyAdminLoader=loadAdminData;loadAdminData=async function(){await consistencyAdminLoader();syncDashboardAndEmptyStates()};
+syncDashboardAndEmptyStates();
