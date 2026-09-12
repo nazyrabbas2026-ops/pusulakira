@@ -14,6 +14,7 @@ const supportedLanguages=['tr','ru','en'];
 const detectedLanguage=String(navigator.language||'tr').slice(0,2).toLowerCase();
 let activeLanguage=supportedLanguages.includes(localStorage.getItem('pusulaKiraLanguage'))?localStorage.getItem('pusulaKiraLanguage'):(supportedLanguages.includes(detectedLanguage)?detectedLanguage:'tr');
 const localeTag=()=>({tr:'tr-TR',ru:'ru-RU',en:'en-US'})[activeLanguage]||'tr-TR';
+const localeMessages={},missingTranslationWarnings=new Set();
 const saveTenants=()=>localStorage.setItem('kiraPanelTenants',JSON.stringify(tenants)),cash=n=>{let formatted=new Intl.NumberFormat(localeTag(),{style:'currency',currency:'TRY',currencyDisplay:'narrowSymbol',maximumFractionDigits:0}).format(Number(n)||0);return formatted.replace(/^₺(?=\d)/,'₺\u00a0').replace(/(?<=\d)₺$/,'\u00a0₺')};
 // One-time cleanup of the project's sample browser data; real records created afterwards are preserved.
 if(localStorage.getItem('kiraPanelDataVersion')!=='4'){['kiraPanelTenants','kiraPanelAdvancePlans','kiraPanelReceipt','kiraPanelSession','kiraPanelApiToken','kiraPanelLatestNotice','kiraPanelRenewalNotice'].forEach(k=>localStorage.removeItem(k));tenants=[];localStorage.setItem('kiraPanelDataVersion','4')}
@@ -358,7 +359,6 @@ function openTenantContractDialog(){
 
 // Application-wide, framework-free i18n. Locale files remain the source of
 // truth while Turkish is used as a resilient fallback for missing keys.
-const localeMessages={},missingTranslationWarnings=new Set();
 function translationValue(source,key){return key.split('.').reduce((value,part)=>value&&value[part],source)}
 function tr(key,variables={}){let value=translationValue(localeMessages[activeLanguage],key)??translationValue(localeMessages.tr,key);if(value==null){if(!missingTranslationWarnings.has(key)){missingTranslationWarnings.add(key);console.warn(`[i18n] Missing translation: ${key}`)}value=key}return String(value).replace(/\{(\w+)\}/g,(_,name)=>variables[name]??`{${name}}`)}
 function replaceOwnText(element,value){if(!element)return;let node=[...element.childNodes].find(item=>item.nodeType===Node.TEXT_NODE&&item.nodeValue.trim());if(node)node.nodeValue=` ${value} `;else element.append(document.createTextNode(` ${value}`))}
