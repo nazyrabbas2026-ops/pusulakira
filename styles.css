@@ -116,3 +116,34 @@ main{margin-left:264px;background:radial-gradient(circle at 78% 6%,#ffffff 0,#f7
 /* Login header alignment: security badge and language selector share one flow. */
 .auth-card-kicker{display:flex;align-items:center;justify-content:space-between;gap:16px}.auth-card-actions{display:flex;align-items:center;justify-content:flex-end;gap:14px;min-width:0;margin-left:auto}.auth-card-actions>.secure-login,.auth-card-actions>.language-picker{position:static;top:auto;right:auto;margin:0;align-self:center;line-height:1.2}.auth-card-actions>.secure-login{min-height:38px;flex:none}.auth-card-actions>.secure-login i{flex:none}.auth-card-actions>.language-picker{height:38px;min-width:112px;flex:none}
 @media(max-width:520px){.auth-card-kicker{align-items:flex-start;flex-wrap:wrap;gap:10px}.auth-card-kicker>.eyebrow{width:100%}.auth-card-actions{width:100%;justify-content:space-between;gap:10px;margin-left:0}.auth-card-actions>.secure-login,.auth-card-actions>.language-picker{min-height:38px}}
+
+/* Shared, boxed dil seçici — one visual language across the login card,
+   dashboard topbar and tenant portal topbar. The native <select> stays in
+   the DOM (visually hidden) as the single source of truth for the value;
+   this only skins a custom trigger + dropdown card around it. */
+.language-picker,.auth-card-actions>.language-picker{position:relative}
+.language-picker{border-radius:11px;transition:border-color .16s ease,background .16s ease,box-shadow .16s ease}
+.language-picker:hover{border-color:#8fc3b3;background:#f2faf6}
+.language-picker.open{border-color:#3a9b81;box-shadow:0 0 0 3px rgba(58,155,129,.14)}
+.language-picker-trigger{flex:1;min-width:0;height:100%;display:flex;align-items:center;gap:7px;border:0;background:transparent;padding:0;margin:0;color:inherit;font:inherit;cursor:pointer;border-radius:inherit}
+.language-picker-trigger:focus-visible{outline:2px solid #3a9b81;outline-offset:2px}
+.language-picker-current{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#28756d;font:700 11px 'Inter',sans-serif}
+.language-picker-chevron{flex:none;width:14px;height:14px;display:grid;place-items:center;color:#6b8079;transition:transform .18s ease}
+.language-picker-chevron svg{width:11px;height:11px}
+.language-picker.open .language-picker-chevron{transform:rotate(180deg)}
+select[data-language-select]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.language-picker-menu{position:absolute;z-index:40;top:calc(100% + 8px);right:0;min-width:168px;padding:6px;border:1px solid #e1e8e4;border-radius:14px;background:#fff;box-shadow:0 18px 45px rgba(14,49,40,.16);opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .16s ease,transform .16s ease}
+.language-picker-menu.open{opacity:1;pointer-events:auto;transform:translateY(0)}
+.language-picker-option{width:100%;display:flex;align-items:center;gap:9px;padding:9px 10px;border:0;border-radius:9px;background:transparent;color:#2d3b36;font:600 11px 'Inter',sans-serif;text-align:left;cursor:pointer}
+.language-picker-option:hover{background:#f0f8f5}
+.language-picker-option.active{background:#e7f5ee;color:#176a59}
+.language-picker-flag{flex:none;font-size:14px;line-height:1}
+.language-picker-option>span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.language-picker-check{flex:none;width:14px;text-align:center;color:#1e8e74;font-size:11px;font-weight:700;opacity:0}
+.language-picker-option.active .language-picker-check{opacity:1}
+.dashboard-language{height:40px}
+.tenant-language{height:41px}
+.tenant-language .language-picker-current{color:#fff}
+.tenant-language .language-picker-chevron{color:#d7ece5}
+.tenant-language:hover{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.32)}
+@media(max-width:760px){.dashboard-language,.tenant-language{min-width:40px;padding:0;justify-content:center}.dashboard-language .language-picker-trigger,.tenant-language .language-picker-trigger{justify-content:center;gap:0}.dashboard-language .language-picker-current,.tenant-language .language-picker-current{display:none}.dashboard-language .language-picker-menu,.tenant-language .language-picker-menu{right:0;left:auto}}

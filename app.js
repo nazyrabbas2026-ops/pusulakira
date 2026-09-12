@@ -367,9 +367,8 @@ function selectMarkup(){return `<span aria-hidden="true"></span><select data-lan
 function addGlobalLanguageSelectors(){
   const original=$('languageSelect');if(original){original.dataset.languageSelect='';original.setAttribute('aria-label',tr('language.label'));let icon=original.previousElementSibling;if(icon){icon.textContent='';icon.setAttribute('aria-hidden','true')}original.querySelector('[value="tr"]').textContent='Türkçe';original.querySelector('[value="ru"]').textContent='Русский';original.querySelector('[value="en"]').textContent='English'}
   const authKicker=document.querySelector('.auth-card-kicker'),secureLogin=authKicker?.querySelector('.secure-login'),picker=original?.closest('.language-picker');if(authKicker&&secureLogin&&picker){let actions=authKicker.querySelector('.auth-card-actions');if(!actions){actions=document.createElement('span');actions.className='auth-card-actions';authKicker.append(actions)}actions.append(secureLogin,picker)}
-  const brandRow=document.querySelector('.auth-brand-row');if(brandRow&&!brandRow.querySelector('.marketing-language')){let label=document.createElement('label');label.className='language-picker global-language marketing-language';label.innerHTML=selectMarkup();brandRow.append(label)}
-  const topActions=document.querySelector('.top-actions');if(topActions&&!topActions.querySelector('.dashboard-language')){let label=document.createElement('label');label.className='language-picker global-language dashboard-language';label.innerHTML=selectMarkup();topActions.insertBefore(label,topActions.firstChild)}
-  const tenantActions=document.querySelector('.tenant-top>div:last-child');if(tenantActions&&!tenantActions.querySelector('.tenant-language')){let label=document.createElement('label');label.className='language-picker global-language tenant-language';label.innerHTML=selectMarkup();tenantActions.insertBefore(label,tenantActions.firstChild)}
+  const topActions=document.querySelector('.top-actions');if(topActions&&!topActions.querySelector('.dashboard-language')){let picker=document.createElement('div');picker.className='language-picker global-language dashboard-language';picker.innerHTML=selectMarkup();topActions.insertBefore(picker,$('newTenantBtn')||null)}
+  const tenantActions=document.querySelector('.tenant-top>div:last-child');if(tenantActions&&!tenantActions.querySelector('.tenant-language')){let picker=document.createElement('div');picker.className='language-picker global-language tenant-language';picker.innerHTML=selectMarkup();tenantActions.insertBefore(picker,$('tenantLogout')||null)}
   document.querySelectorAll('[data-language-select]').forEach(select=>{select.value=activeLanguage;if(select.dataset.i18nBound)return;select.dataset.i18nBound='1';select.addEventListener('change',()=>setSiteLanguage(select.value))})
 }
 function translateStaticInterface(){
@@ -425,6 +424,29 @@ const localizedAnnouncementRender=renderAnnouncements;renderAnnouncements=functi
 const localizedAdminLoader=loadAdminData;loadAdminData=async function(){await localizedAdminLoader();if(localeMessages[activeLanguage])applySiteLanguage()};
 const localizedTenantLoader=loadTenantProfile;loadTenantProfile=async function(){await localizedTenantLoader();if(localeMessages[activeLanguage])applySiteLanguage()};
 initializeSiteI18n();
+
+// Shared, custom-styled dropdown skin for every language picker (login card,
+// dashboard topbar, tenant portal topbar). The underlying <select> stays the
+// single source of truth so existing language-switching logic is untouched;
+// this only builds an accessible custom trigger/menu around it.
+const languagePickerFlags={tr:'🇹🇷',ru:'🇷🇺',en:'🇬🇧'};
+function closeLanguagePicker(picker){picker.classList.remove('open');const trigger=picker.querySelector('.language-picker-trigger'),menu=picker.querySelector('.language-picker-menu');if(trigger)trigger.setAttribute('aria-expanded','false');if(menu)menu.classList.remove('open')}
+function openLanguagePicker(picker){picker.classList.add('open');const trigger=picker.querySelector('.language-picker-trigger'),menu=picker.querySelector('.language-picker-menu');if(trigger)trigger.setAttribute('aria-expanded','true');if(menu)menu.classList.add('open')}
+function syncLanguagePickerVisual(picker){const select=picker.querySelector('select[data-language-select]');if(!select)return;const activeOption=select.options[select.selectedIndex],current=picker.querySelector('.language-picker-current'),trigger=picker.querySelector('.language-picker-trigger');if(current&&activeOption)current.textContent=activeOption.textContent;if(trigger&&activeOption)trigger.setAttribute('aria-label',`${tr('language.label')}: ${activeOption.textContent}`);picker.querySelectorAll('.language-picker-option').forEach(option=>option.classList.toggle('active',option.dataset.lang===select.value))}
+function syncAllLanguagePickers(){document.querySelectorAll('.language-picker').forEach(syncLanguagePickerVisual)}
+function enhanceLanguagePicker(picker){
+  if(picker.dataset.enhanced)return;const select=picker.querySelector('select[data-language-select]');if(!select)return;picker.dataset.enhanced='1';
+  const trigger=document.createElement('button');trigger.type='button';trigger.className='language-picker-trigger';trigger.setAttribute('aria-haspopup','listbox');trigger.setAttribute('aria-expanded','false');trigger.innerHTML='<span class="language-picker-current"></span><span class="language-picker-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></span>';
+  const menu=document.createElement('div');menu.className='language-picker-menu';menu.setAttribute('role','listbox');menu.innerHTML=[...select.options].map(option=>`<button type="button" class="language-picker-option" data-lang="${option.value}" role="option"><span class="language-picker-flag" aria-hidden="true">${languagePickerFlags[option.value]||'🌐'}</span><span>${escapeHtml(option.textContent)}</span><span class="language-picker-check" aria-hidden="true">✓</span></button>`).join('');
+  select.before(trigger);picker.appendChild(menu);select.setAttribute('tabindex','-1');select.setAttribute('aria-hidden','true');
+  trigger.addEventListener('click',event=>{event.stopPropagation();let isOpen=picker.classList.contains('open');document.querySelectorAll('.language-picker.open').forEach(closeLanguagePicker);if(!isOpen)openLanguagePicker(picker)});
+  menu.querySelectorAll('.language-picker-option').forEach(option=>option.addEventListener('click',event=>{event.stopPropagation();select.value=option.dataset.lang;select.dispatchEvent(new Event('change',{bubbles:true}));closeLanguagePicker(picker);trigger.focus()}));
+  syncLanguagePickerVisual(picker);
+}
+document.addEventListener('click',()=>document.querySelectorAll('.language-picker.open').forEach(closeLanguagePicker));
+document.addEventListener('keydown',event=>{if(event.key==='Escape')document.querySelectorAll('.language-picker.open').forEach(closeLanguagePicker)});
+const baseAddGlobalLanguageSelectors=addGlobalLanguageSelectors;addGlobalLanguageSelectors=function(){baseAddGlobalLanguageSelectors();document.querySelectorAll('.language-picker').forEach(enhanceLanguagePicker);syncAllLanguagePickers()};
+const visualAwareApplySiteLanguage=applySiteLanguage;applySiteLanguage=function(){visualAwareApplySiteLanguage();syncAllLanguagePickers()};
 
 // Locale-safe status codes and late-rendered tenant content. User supplied
 // names, addresses and property titles deliberately remain untouched.
