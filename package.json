@@ -1,0 +1,14 @@
+{
+  "name": "pusulakira",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PusulaKira kira ve apartman yönetim uygulaması",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check app.js && node scripts/i18n-regression.js",
+    "i18n:check": "node scripts/i18n-regression.js"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
