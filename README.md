@@ -10,6 +10,10 @@ Node.js'in yerleşik `node:sqlite` modülü ve dosya tabanlı bir SQLite
 veritabanı ile çalışan, harici bir veritabanı sunucusu gerektirmeyen tek
 parça (frontend + API aynı süreçte) bir uygulamadır.
 
+**Tasarım Sistemi:** [`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md) dosyasına
+bakın — tüm ekranlar için kalıcı, tek doğru (single source of truth)
+renk/tipografi/bileşen referansıdır.
+
 ## Gereksinimler
 
 - Node.js **24 veya üzeri** (`node:sqlite` modülü için gerekli — bkz. `package.json` → `engines`)

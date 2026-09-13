@@ -21,7 +21,7 @@ if(localStorage.getItem('kiraPanelDataVersion')!=='4'){['kiraPanelTenants','kira
 // Never repopulate the application with the original showcase records after a clean start.
 saveTenants();
 const displayPaymentStatus=tenant=>tenant?.payment==='Ödendi'?'Ödendi':tenant?.payment==='Feshedildi'?'Feshedildi':tenant?.payment==='Silindi'?'Silindi':tenant?.status==='Gecikmiş'?'Gecikmiş':tenant?.payment==='Bugün'?'Bugün':'Bekliyor';
-const status=s=>`<span class="status ${s==='Gecikmiş'?'overdue':s==='Ödendi'?'paid':s==='Bugün'?'today':'pending'}">${s}</span>`;
+const status=s=>`<span class="status ${s==='Gecikmiş'?'overdue':s==='Ödendi'||s==='Aktif'?'paid':s==='Bugün'||s==='Yaklaşıyor'?'today':s==='Feshedildi'||s==='Silindi'?'terminated':'pending'}">${s}</span>`;
 function person(t,subtitle){return `<span class="person"><span class="avatar ${t.color}">${escapeHtml(t.initials)}</span><span><b>${escapeHtml(t.name)}</b><small>${escapeHtml(subtitle??t.property)}</small></span></span>`}
 function render(){
   $('tenantCount').textContent=tenants.length;$('activeTenantNum').innerHTML=`${tenants.length} <span>kişi</span>`;
