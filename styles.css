@@ -163,3 +163,17 @@ select[data-language-select]{position:absolute;width:1px;height:1px;padding:0;ma
   .payment-workspace .payment-actions{gap:5px}
   .payment-workspace .payment-actions .paid,.payment-workspace .payment-actions .remind-one,.payment-workspace .payment-actions .receipt-request-btn,.payment-workspace .payment-actions .view-receipt{width:34px;padding:0;justify-content:center;gap:0;font-size:0}
 }
+/* Kiracılar tablosunun son sütunu "•••" için 24px olarak tasarlanmıştı, ama
+   JS bu sütunu her zaman tam metinli bir "Fesih"/"Terminate"/"Расторгнуть"
+   butonuyla dolduruyor. RU/EN'deki en uzun karşılık ("Расторгнуть", 11
+   karakter) 24px'e sığmadığı için buton panel kenarında kesiliyordu. Son
+   sütunu bu metnin rahatça sığacağı sabit bir genişliğe çıkarıyoruz (auto
+   değil, ki başlık satırıyla hizası bozulmasın) ve tablo min-width'ini aynı
+   miktarda artırıyoruz.
+*/
+#tenants .thead,#tenantTableRows .trow{grid-template-columns:1.45fr 1.35fr .9fr .75fr .75fr 92px}
+#tenants .tenant-table{min-width:748px}
+@media(max-width:750px){
+  #tenants .thead,#tenantTableRows .trow{grid-template-columns:1.45fr 1.1fr .8fr 92px}
+  #tenants .tenant-table{min-width:688px}
+}
