@@ -482,7 +482,7 @@ initializeSiteI18n();
 // dashboard topbar, tenant portal topbar). The underlying <select> stays the
 // single source of truth so existing language-switching logic is untouched;
 // this only builds an accessible custom trigger/menu around it.
-const languagePickerFlags={tr:'🇹🇷',ru:'🇷🇺',en:'🇬🇧'};
+const languagePickerFlags={tr:'🇹🇷',ru:'🇷🇺',en:'🇺🇸'};
 function closeLanguagePicker(picker){picker.classList.remove('open');const trigger=picker.querySelector('.language-picker-trigger'),menu=picker.querySelector('.language-picker-menu');if(trigger)trigger.setAttribute('aria-expanded','false');if(menu)menu.classList.remove('open')}
 function openLanguagePicker(picker){picker.classList.add('open');const trigger=picker.querySelector('.language-picker-trigger'),menu=picker.querySelector('.language-picker-menu');if(trigger)trigger.setAttribute('aria-expanded','true');if(menu)menu.classList.add('open')}
 function syncLanguagePickerVisual(picker){const select=picker.querySelector('select[data-language-select]');if(!select)return;const activeOption=select.options[select.selectedIndex],current=picker.querySelector('.language-picker-current'),trigger=picker.querySelector('.language-picker-trigger');if(current&&activeOption)current.textContent=activeOption.textContent;if(trigger&&activeOption)trigger.setAttribute('aria-label',`${tr('language.label')}: ${activeOption.textContent}`);picker.querySelectorAll('.language-picker-option').forEach(option=>option.classList.toggle('active',option.dataset.lang===select.value))}
