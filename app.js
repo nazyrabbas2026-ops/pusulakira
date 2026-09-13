@@ -578,7 +578,7 @@ function renderReceiptRequestNotice(required){
   const loaded=!!localeMessages[activeLanguage];
   const title=required?(loaded?tr('tenant.receiptRequired'):'Dekont ev sahibi tarafından talep edildi.'):(loaded?tr('tenant.receiptOptional'):'Dekont yüklemek isteğe bağlıdır.');
   const info=required?(loaded?tr('tenant.receiptRequiredInfo'):'Ödeme onayı için dekont yüklemeniz gerekiyor.'):(loaded?tr('tenant.receiptOptionalInfo'):'Ev sahibi talep ettiğinde burada zorunlu hâle gelir.');
-  request.innerHTML=`<b>${title}</b><span>${info}</span>`;request.style.background=required?'#fff3e6':'';
+  request.innerHTML=`<i data-icon="info"></i><b>${title}</b><span>${info}</span>`;request.style.background=required?'#fff3e6':'';paintIcons(request);
 }
 function translateTenantDetails(){
   const portal=$('tenantPortal');if(!portal)return;
