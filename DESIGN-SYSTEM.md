@@ -1305,3 +1305,34 @@ Small 12–13 / Table 13–14 / Label 12–13 guidance. Rescaling this
 fully would require re-tuning grid-template-columns and row heights
 across every table and has not been done yet — flagged as a known gap
 rather than silently left inconsistent.
+
+CONTRACT-ALERT COUNTDOWN COLOR: the "Sözleşme uyarıları" panel on
+Genel Bakış colors its remaining-days figure by urgency: under 30
+days is danger (default `.days` color), 30–89 days is `.days.warning`
+(amber), 90+ days is `.days.calm` (success green). This was a genuine
+JS/CSS disconnect — the amber class existed in CSS but nothing ever
+applied it — found and fixed via the screenshot verification pass.
+
+
+==================================================
+FAZ ROADMAP — STATUS
+==================================================
+
+Faz 1 — Giriş + Genel Bakış: DONE.
+Faz 2 — Kiracılar, Ödemeler, Sözleşmeler: DONE.
+Design-system audit (colors/dimensions/typography/badges) against
+this document: DONE, screenshot-verified across TR/RU/EN at desktop,
+with tablet/mobile spot-checks on Genel Bakış + a table page.
+Faz 3 — Gayrimenkuller: in progress.
+Faz 4 — Ayarlar: not started.
+Faz 5 — Kiracı Portalı: not started (still on the pre-audit palette
+and 'DM Serif Display' headings; explicitly out of scope until then).
+Faz 6 — Responsive Polish: not started. Scope: a real off-canvas
+navigation drawer (hamburger trigger) for the administrator shell at
+tablet/mobile widths, since the sidebar currently either shows in full
+(no true "collapse" between 768–1024px, unlike Section 23) or hides
+completely with no replacement way to switch pages. Deliberately
+deferred until Faz 3–5 are done, since patching the breakpoint alone
+without a navigation replacement would make the admin app unusable at
+those widths — a bigger, decided regression than the current cosmetic
+squeeze.
