@@ -475,6 +475,19 @@ const contractDurationAwareTranslate=translateExtendedInterface;translateExtende
 // Kiracı/ödeme boş durum kartları, dil sadece değiştirilip veri hâlâ boşken de güncellensin.
 const emptyStateAwareApplySiteLanguage=applySiteLanguage;applySiteLanguage=function(){emptyStateAwareApplySiteLanguage();syncDashboardAndEmptyStates()};
 
+// Ödemeler tablosundaki "Ödeme dönemi"/"Son ödeme" hücreleri (payment-period/
+// payment-due), tenant verisinden ÖNCEDEN BİÇİMLENDİRİLMİŞ (Intl.DateTimeFormat
+// ile locale'e göre hesaplanmış) metinlerdi. translateDynamicInterface bu
+// tarihleri (tenant.periodLabel/dueLabel) dil değişince yeniden hesaplıyordu
+// ama DOM'a hiç yazmıyordu — yalnızca durum rozeti ve aksiyon butonlarını
+// güncelliyordu. render() ise dil değiştiğinde hiç çağrılmıyordu. Sonuç: bir
+// dilden diğerine geçildiğinde bu hücreler önceki dilde donuk kalıyordu (ör.
+// Rusça'dan Türkçe'ye dönünce "9 сент. 2026 г." gibi metinler ekranda
+// kalıyordu). En güvenilir düzeltme, kısmi etiket yaması eklemek yerine,
+// ödeme satırlarını zaten SIFIRDAN yeniden çizen render()'ı dil değiştiğinde
+// de çağırmak.
+const dateAwareApplySiteLanguage=applySiteLanguage;applySiteLanguage=function(){dateAwareApplySiteLanguage();render()};
+
 // Locale-safe status codes and late-rendered tenant content. User supplied
 // names, addresses and property titles deliberately remain untouched.
 function paymentStatusCode(tenant){if(tenant?.paymentCode)return tenant.paymentCode;const value=displayPaymentStatus(tenant);return value==='Ödendi'?'PAID':value==='Gecikmiş'?'OVERDUE':value==='Feshedildi'?'TERMINATED':value==='Silindi'?'DELETED':'PENDING'}
