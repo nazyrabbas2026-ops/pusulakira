@@ -1323,7 +1323,17 @@ Faz 2 — Kiracılar, Ödemeler, Sözleşmeler: DONE.
 Design-system audit (colors/dimensions/typography/badges) against
 this document: DONE, screenshot-verified across TR/RU/EN at desktop,
 with tablet/mobile spot-checks on Genel Bakış + a table page.
-Faz 3 — Gayrimenkuller: in progress.
+Faz 3 — Gayrimenkuller: DONE. Card grid replaces the old flat tenant-
+property table; the 4 KPIs (total properties/units/occupied/vacant)
+read from the site→block→unit structure (/api/site-structure), not
+the tenant/property records. Each site is a card with a hand-built
+neutral SVG building illustration (forest/mint palette, deliberately
+iconic rather than photorealistic, per §5), unit/block counts, address
+or a "no address" fallback, and an occupancy bar + summary. The old
+inline site/block/unit forms moved into a "+ Add property" modal using
+§21's multi-section pattern; the underlying /api/site-structure calls
+are unchanged. Screenshot-verified via real UI interaction (not just
+API calls) across TR/RU/EN desktop, TR tablet/mobile.
 Faz 4 — Ayarlar: not started.
 Faz 5 — Kiracı Portalı: not started (still on the pre-audit palette
 and 'DM Serif Display' headings; explicitly out of scope until then).
