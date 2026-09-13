@@ -25,6 +25,15 @@ CREATE TABLE IF NOT EXISTS activity_logs(id INTEGER PRIMARY KEY,user_id INTEGER,
 const column = (table, name, definition) => { if (!db.prepare(`PRAGMA table_info(${table})`).all().some(x => x.name === name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`); };
 [['tenants','termination_at','TEXT'],['tenants','termination_note','TEXT'],['tenants','contract_start','TEXT'],['tenants','contract_months','INTEGER'],['tenants','renewal_date','TEXT'],['tenants','contract_duration_days','INTEGER'],['tenants','rental_category','TEXT'],['tenants','password_hash','TEXT'],['users','full_name','TEXT'],['users','password_hash','TEXT'],['tickets','category','TEXT'],['tickets','priority','TEXT']].forEach(x => column(...x));
 column('properties','address','TEXT');
+column('properties','manager_id','INTEGER');
+column('announcements','manager_id','INTEGER');
+column('bank_matches','manager_id','INTEGER');
+column('sites','manager_id','INTEGER');
+(function backfillManagerOwnership() {
+  const owner = db.prepare("SELECT id FROM users WHERE role='agent' ORDER BY id ASC LIMIT 1").get();
+  if (!owner) return;
+  for (const table of ['properties', 'announcements', 'bank_matches', 'sites']) db.prepare(`UPDATE ${table} SET manager_id=? WHERE manager_id IS NULL`).run(owner.id);
+})();
 
 const now = () => new Date().toISOString(), period = () => now().slice(0, 7), clean = x => String(x || '').trim();
 const nameKey = x => clean(x).replace(/\s+/g, ' ').toLocaleLowerCase('tr-TR');
