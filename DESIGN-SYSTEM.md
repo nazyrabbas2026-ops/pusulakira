@@ -1334,7 +1334,46 @@ inline site/block/unit forms moved into a "+ Add property" modal using
 §21's multi-section pattern; the underlying /api/site-structure calls
 are unchanged. Screenshot-verified via real UI interaction (not just
 API calls) across TR/RU/EN desktop, TR tablet/mobile.
-Faz 4 — Ayarlar: not started.
+Faz 4 — Ayarlar: DONE. The single flat notification/account panel was
+replaced with a six-tab structure (Profil Bilgileri, Bildirim Ayarları,
+Güvenlik, Dil ve Bölge, Görünüm, Sistem) built from a segmented-pill
+`.settings-tabs` control (visually derived from the existing Ödemeler
+`.payment-filter` pills). Profil Bilgileri and Güvenlik add two new
+backend endpoints (`PUT /api/profile`, `PUT /api/profile/password`) —
+the only server-side additions this phase required. Dil ve Bölge adds
+a second language picker, synced to the existing topbar one through
+the same generic `.language-picker`/`[data-language-select]` machinery
+(no new sync code needed), plus a read-only date/currency-format info
+card. Görünüm adds two real, working preferences — sidebar
+collapse-to-icons and compact table density — both `localStorage`-
+backed; per an explicit decision, sidebar collapse only toggles a
+narrower *alternate* state and never changes the locked 254px default
+width from §8. The pre-existing "Sistem hareketleri" audit-log panel
+(previously bolted onto the settings placeholder by `mountSiteManagement`
+as a sibling of the old notification grid, with a hardcoded, never-
+translated Turkish header) now lives inside the Sistem tab and is
+properly localized via `translateExtendedInterface`.
+
+Also fixed as part of this phase: `loadAdminData()` was reassigned 8
+times by a monkey-patch chain (`const prev=loadAdminData;loadAdminData=
+async function(){await prev();...}`), and three separate auto-triggers
+called it on every page load/session restore *while that chain was
+still being assembled* (script top-to-bottom order), so a refreshed
+session only ever ran a partial version — missing the payment overview
+refresh, revenue chart, and final consistency pass (though the System
+tab's audit panel/property cards happened to still render, via the
+separate, unconditional `initializeSiteI18n → applySiteLanguage →
+translateStaticInterface → mountSiteManagement` path). Fixed by
+removing the two premature calls and adding one consolidated call
+after every wrapper is attached. Verified with a scripted Playwright
+session (temporarily installed for this phase, then removed) that
+seeded a real tenant/site through the API and confirmed, specifically
+*after a page reload*, that dashboard metrics, the revenue chart,
+payment summary, contract rows and the audit log all populate with
+real (non-zero) data — not just that the page renders. The Kiracı
+Portalı (tenant) restore path was checked the same way (fresh login +
+reload) and was already correct; it was not modified, staying out of
+this phase's scope. Screenshot-verified across TR/RU/EN.
 Faz 5 — Kiracı Portalı: not started (still on the pre-audit palette
 and 'DM Serif Display' headings; explicitly out of scope until then).
 Faz 6 — Responsive Polish: not started. Scope: a real off-canvas
