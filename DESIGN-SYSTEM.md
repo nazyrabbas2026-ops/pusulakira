@@ -1405,6 +1405,93 @@ populate the Sistem tab's audit log and the Gayrimenkuller property
 grid correctly on both fresh login and reload (no regression to the
 Faz 4 fix).
 
+FAZ 6 — RESPONSIVE POLISH (tablet/mobile navigation): §23 asks for the
+sidebar to collapse into a drawer at tablet (768-1279px) and mobile
+(<768px), but the breakpoint that actually hid it was 750/760px — and
+nothing replaced it, so between roughly 760-1279px the app was
+unusable (no way to switch pages). Fixed with one shared drawer
+mechanism, deliberately built to avoid this document's own repeated
+"same rule defined in several places" pattern:
+
+MECHANISM: a single pair of JS functions (`openNavDrawer`/
+`closeNavDrawer`/`bindNavDrawer`) and a single CSS block operate on
+whichever real sidebar element is relevant — the admin `.sidebar` or
+the tenant `.tenant-sidebar` — by toggling one `drawer-open` class and
+sliding it via `transform`. Nothing is cloned: the exact DOM nodes
+with their existing click handlers become the drawer content, so nav
+links inside it keep working without any duplicate wiring. One shared
+`#navDrawerOverlay` element (rgba(12,30,27,.40), matching §21's modal
+overlay) is reused for both shells. Accessibility per §25: the
+hamburger carries `aria-label`/`aria-expanded`, focus moves into the
+drawer on open and back to the hamburger on close, Tab is trapped
+inside the open drawer, and Escape closes it.
+
+BREAKPOINTS: consolidated the four separate admin `.sidebar{display:
+none}` declarations (750px ×2, 760px ×2, scattered across the general
+layout, payments-page, and login-adjacent blocks) into the one shared
+rule at `max-width:1279px`, and renumbered their surrounding mobile
+blocks to the spec's 767px mobile boundary for internal consistency.
+Did the equivalent for the tenant sidebar: removed its 1120px/900px
+icon-rail shrink tiers (190px, then 72px) in favor of the shared
+tablet-drawer rule at 768-1279px, and moved its existing "switch to
+bottom tab bar" threshold from 700px to 767px to land exactly on the
+spec's mobile boundary. The other ~16 unrelated breakpoints in
+`styles.css` (table column widths, individual card-grid tunings, etc.)
+were deliberately left untouched — renumbering those was assessed and
+rejected as out of this phase's scope (see TABLE STRATEGY below for
+the same reasoning applied explicitly).
+
+KİRACI PORTALI — DRAWER VS. BOTTOM NAV (a deliberate split, not an
+inconsistency): the tenant portal already had a working, previously
+screenshot-verified mobile solution — a fixed bottom tab bar below
+768px. Rather than replace it with the same hamburger-drawer pattern
+used at 768-1279px "for consistency," it keeps the bottom bar below
+768px and only gets the shared drawer in the 768-1279px tablet range,
+replacing what used to be a cramped 72px icon-only rail there. A
+bottom tab bar is the better-established mobile pattern (thumb reach,
+one tap, always visible) and discarding a working one purely to make
+every breakpoint use identical mechanics would have been §27
+consistency applied too literally, at a real UX cost, for a component
+users never see side-by-side with the admin shell anyway. The
+mechanism (the drawer implementation) is still fully shared code
+between both shells; only which breakpoints call it differs.
+
+TABLE STRATEGY — DELIBERATELY UNCHANGED: §23 allows "horizontal
+scroll or structured mobile cards" for tables. The existing approach
+is already horizontal scroll (`.table-panel{overflow-x:auto}` plus a
+per-breakpoint `min-width` on `.tenant-table`, tuned separately across
+4+ tables and breakpoints). Converting to a card layout was evaluated
+and rejected for this phase: it isn't a CSS reflow, it requires a
+second DOM shape per table, and search/filter/row-actions on the
+Kiracılar, Ödemeler and Sözleşmeler pages are wired directly to
+`.trow`/`row.dataset.index` — supporting both shapes would mean
+rewriting each page's render path, well beyond "Responsive Polish"
+and carrying exactly the regression risk this project has been
+tracking carefully phase over phase. Scroll-within-container stays;
+revisit as its own phase if a card layout is wanted later.
+
+CONTENT PADDING / KPI GRID: added the spec's tablet tier that was
+previously missing entirely — `.page{padding:24px}` and `.metrics-grid`
+2-column at 768-1279px (the app jumped straight from 32px/4-column
+desktop to 16px/2-column mobile with nothing in between). Also added
+a general mobile 1-column `.metrics-grid` rule below 768px — previously
+only the Genel Bakış page collapsed to 1 column (at 500px), so every
+other page's KPI cards stayed 2-column all the way down to 375px.
+
+LOGIN SCREEN: checked at all 4 breakpoints — already handled
+reasonably (`.auth-visual` marketing panel hides, form goes full-width)
+from earlier work; no changes needed, confirmed via screenshot rather
+than assumed.
+
+Screenshot- and interaction-verified via Playwright (temporarily
+installed, then removed) at 1440/1280/768/375px, both shells, TR/RU/EN:
+real hamburger clicks opening/closing the drawer, Escape + outside-click
++ focus-trap + nav-link-click-closes-drawer all exercised with actual
+keyboard/mouse events (not simulated state), every admin page and every
+tenant view reachable and overflow-free at every breakpoint, and a
+reload-regression check (Faz 4's loadAdminData fix) re-run at all 4
+widths.
+
 CONTRACT-ALERT COUNTDOWN COLOR: the "Sözleşme uyarıları" panel on
 Genel Bakış colors its remaining-days figure by urgency: under 30
 days is danger (default `.days` color), 30–89 days is `.days.warning`
@@ -1487,12 +1574,21 @@ fallback) found during verification were also fixed. See the
 Implementation Notes entry above for full detail. Screenshot-verified
 across TR/RU/EN desktop and one mobile width via real UI interaction
 (Playwright, temporarily installed for this phase, then removed).
-Faz 6 — Responsive Polish: not started. Scope: a real off-canvas
-navigation drawer (hamburger trigger) for the administrator shell at
-tablet/mobile widths, since the sidebar currently either shows in full
-(no true "collapse" between 768–1024px, unlike Section 23) or hides
-completely with no replacement way to switch pages. Deliberately
-deferred until Faz 3–5 are done, since patching the breakpoint alone
-without a navigation replacement would make the admin app unusable at
-those widths — a bigger, decided regression than the current cosmetic
-squeeze.
+Faz 6 — Responsive Polish: DONE. Built one shared hamburger-drawer
+mechanism (see the Implementation Notes entry above) used by the admin
+shell across the full 768-1279px tablet + <768px mobile range, and by
+the Kiracı Portalı only in the 768-1279px tablet range (its existing
+bottom tab bar stays in charge below that — a deliberate, documented
+split, not an inconsistency). Consolidated the four scattered
+admin sidebar-hide breakpoints (750/760px) and the tenant sidebar's
+two icon-shrink tiers (1120px/900px) into that one mechanism, aligned
+on the spec's 768/1279px boundaries. Added the previously-missing
+tablet content-padding (24px) and KPI 2-column tier, and a general
+mobile 1-column KPI rule (previously only Genel Bakış collapsed to 1
+column). Tables stay on horizontal scroll — converting to card layout
+was evaluated and rejected as disproportionate to this phase's scope
+(full detail above). Screenshot- and interaction-verified at
+1440/1280/768/375px across both shells and TR/RU/EN with real
+hamburger clicks, Escape, outside-click, focus-trap and nav-link-click
+behavior, plus a re-run of the Faz 4 reload-data regression check at
+every width.
