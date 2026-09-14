@@ -1390,10 +1390,20 @@ a `tenant.ibanMissing` key, and `translateTenantInterface` re-applies
 it from the cached `window.__pkTenantProfile` on every language switch.
 
 Faz 4/5 both surfaced tenant-session console 403s from
-`mountSiteManagement()` calling agent-only endpoints unconditionally
-(it runs for every session role, not just 'agent'); pre-existing,
-harmless (the calls fail closed, no data leaks, nothing renders
-incorrectly), unrelated to either phase's scope, left for a future pass.
+`mountSiteManagement()` calling agent-only endpoints unconditionally.
+Verified directly (server responses with a real tenant token, and a
+Playwright network trace of an actual tenant login): exactly 2
+endpoints, `/api/site-structure` and `/api/activity-logs`, called 4
+times each per fresh tenant session — every one of the 8 calls
+returned 403 with only `{"error":"..."}`, zero data exposed. Since
+there was no leak, per plan this was a client-side wastefulness bug,
+not a security incident: `mountSiteManagement()` now checks
+`kiraPanelSession.role==='agent'` before doing anything, so it no-ops
+entirely for tenant (and logged-out) sessions. Re-verified after the
+fix: tenant sessions make zero agent-only calls; agent sessions still
+populate the Sistem tab's audit log and the Gayrimenkuller property
+grid correctly on both fresh login and reload (no regression to the
+Faz 4 fix).
 
 CONTRACT-ALERT COUNTDOWN COLOR: the "Sözleşme uyarıları" panel on
 Genel Bakış colors its remaining-days figure by urgency: under 30
