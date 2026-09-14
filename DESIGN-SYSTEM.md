@@ -1326,6 +1326,75 @@ select` (the "+ Add property" modal's site/block/unit fields, Faz 3)
 was 44px, below Section 14's 48-52px range. Raised to 48px, matching
 `.modal input` (tenant form) and `.settings-field input` (Faz 4).
 
+FAZ 5 — KİRACI PORTALI BRAND ALIGNMENT: brought the tenant portal onto
+the same visual system as the administrator screens, without changing
+its navigation structure (Ana Sayfa/Ödemeler/Sözleşme/Bildirimler/
+İstek-Şikayet/Profil, already correct from earlier work).
+
+TYPOGRAPHY: removed 'DM Serif Display' from 4 tenant-portal headings
+(`.tenant-welcome h1`, `.tenant-card h3`, `.tenant-panel .panel-header
+h3`/`.advance-plan h3`, `.tenant-help-card h3`) in favor of 'Inter',
+matching the admin `.panel-header h3`/`.page-heading h1` convention
+exactly. The decorative sidebar slogan (`.tenant-sidebar-art p`, "Daha
+iyi bir yaşam mümkün.") was DELIBERATELY moved to 'Caveat' rather than
+Inter — it is the tenant-portal equivalent of the admin sidebar's own
+`.sidebar-quote`, which already uses 'Caveat' as the flagged-but-
+accepted decorative exception noted above; matching that exception is
+more consistent with §27 than forcing this one instance to Inter alone
+would have been. The two Login-screen serif headings are unrelated
+(§20 exception) and were not touched.
+
+STATUS BADGES: the tenant portal sits outside `.app-shell`, so it never
+received the pill-form + `var(--success/--warning/--danger)` token
+system the "STATUS BADGE FORM" decision above applied only to
+`.app-shell .status`. It was falling back to an older, un-tokenized,
+smaller-radius rule where the "Bekliyor" (pending) status rendered in
+green instead of amber — a real user-facing miscommunication (a
+tenant could read "payment pending" as "payment confirmed"). Fixed by
+extending every `.app-shell .status...` selector to also match
+`.tenant-portal .status...`, so both surfaces now share one rule set
+and one set of tokens.
+
+BUTTONS: `.upload-receipt` (a primary CTA) was 38px/9px-radius; raised
+to the standard 44px/12px-radius/14px-600-weight button spec. Left
+`.copy-iban` at its smaller compact size — it belongs to the same
+"micro-action" category as the admin table's `.row-action` buttons
+(6px radius, well under 44px), which is an existing, accepted smaller
+class of control outside the primary/secondary/tertiary button system,
+not a spec violation.
+
+DEAD CSS: of 7 `.tenant-portal{...}`-selector occurrences in
+`styles.css`, only one pair was a true unconditional duplicate (an
+early `.tenant-portal{min-height:100vh;background:#FFFFFF}` fully
+superseded by a later, more complete block); it was removed. The other
+5 are legitimately distinct — different selectors (`[hidden]`,
+`:not([hidden])`, `.tenant-portal *`) or different `@media` breakpoints
+overriding the same `--tenant-sidebar` custom property — and were left
+as-is after checking each individually (same method as the sidebar
+width cleanup above: extract every rule, diff the properties, confirm
+nothing is silently overridden before deleting anything).
+
+CHECKED, NOT CHANGED: `.notice-icon.violet`/`.metric-icon.violet` and
+`.timeline-card.purple` look off-palette by class name, but `--violet`
+already resolves to the locked Primary Green `#246B5B` (a leftover
+name from before an earlier reconciliation pass), and `.timeline-card
+.purple`'s hardcoded `#2F7D68` is the locked Interactive Green. Neither
+is an actual hex deviation; left untouched rather than renamed, to
+avoid an unrelated site-wide class-rename risk.
+
+LANGUAGE-SWITCH BUG FOUND DURING THIS PHASE'S VERIFICATION: the IBAN
+field's "no IBAN yet" fallback was a hardcoded Turkish string written
+once when tenant data loads; switching the UI language afterward (no
+new data fetch) left it in Turkish since nothing re-evaluated it. Now
+a `tenant.ibanMissing` key, and `translateTenantInterface` re-applies
+it from the cached `window.__pkTenantProfile` on every language switch.
+
+Faz 4/5 both surfaced tenant-session console 403s from
+`mountSiteManagement()` calling agent-only endpoints unconditionally
+(it runs for every session role, not just 'agent'); pre-existing,
+harmless (the calls fail closed, no data leaks, nothing renders
+incorrectly), unrelated to either phase's scope, left for a future pass.
+
 CONTRACT-ALERT COUNTDOWN COLOR: the "Sözleşme uyarıları" panel on
 Genel Bakış colors its remaining-days figure by urgency: under 30
 days is danger (default `.days` color), 30–89 days is `.days.warning`
@@ -1367,7 +1436,7 @@ the same generic `.language-picker`/`[data-language-select]` machinery
 card. Görünüm adds two real, working preferences — sidebar
 collapse-to-icons and compact table density — both `localStorage`-
 backed; per an explicit decision, sidebar collapse only toggles a
-narrower *alternate* state and never changes the locked 254px default
+narrower *alternate* state and never changes the locked 264px default
 width from §8. The pre-existing "Sistem hareketleri" audit-log panel
 (previously bolted onto the settings placeholder by `mountSiteManagement`
 as a sibling of the old notification grid, with a hardcoded, never-
@@ -1394,8 +1463,20 @@ real (non-zero) data — not just that the page renders. The Kiracı
 Portalı (tenant) restore path was checked the same way (fresh login +
 reload) and was already correct; it was not modified, staying out of
 this phase's scope. Screenshot-verified across TR/RU/EN.
-Faz 5 — Kiracı Portalı: not started (still on the pre-audit palette
-and 'DM Serif Display' headings; explicitly out of scope until then).
+Faz 5 — Kiracı Portalı: DONE. Navigation structure (Ana Sayfa/Ödemeler/
+Sözleşme/Bildirimler/İstek-Şikayet/Profil) was already correct from
+earlier work; this phase aligned the visual language — typography
+(DM Serif Display removed from 4 headings, in favor of Inter; the
+sidebar slogan matched to the admin sidebar's own accepted Caveat
+exception instead), status badges (now share the exact pill form and
+color tokens with `.app-shell .status`, fixing a real "Bekliyor"
+rendered-as-green miscommunication), and the primary upload-receipt
+button (raised to the standard 44px/12px-radius spec). One dead CSS
+rule and one language-switch i18n gap (a hardcoded IBAN-missing
+fallback) found during verification were also fixed. See the
+Implementation Notes entry above for full detail. Screenshot-verified
+across TR/RU/EN desktop and one mobile width via real UI interaction
+(Playwright, temporarily installed for this phase, then removed).
 Faz 6 — Responsive Polish: not started. Scope: a real off-canvas
 navigation drawer (hamburger trigger) for the administrator shell at
 tablet/mobile widths, since the sidebar currently either shows in full
