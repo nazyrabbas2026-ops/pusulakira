@@ -1306,6 +1306,26 @@ fully would require re-tuning grid-template-columns and row heights
 across every table and has not been done yet — flagged as a known gap
 rather than silently left inconsistent.
 
+SIDEBAR WIDTH — CASCADE CLEANUP: `styles.css` had accumulated four
+separate unconditional `.sidebar{width:...}` full rule blocks across
+phases (254px, 286px, 264px, 264px), each redeclaring a different
+partial subset of properties (structural ones like `position:fixed`/
+`height:100vh`/`display:flex` only in the first block, `color`/
+`z-index`/`overflow` only in a third, `width`/`padding`/`background`
+in the last). The cascade already merged these correctly to the
+264px/spec-matching gradient at render time — this was never a live
+bug — but reading only the first declaration during a routine check
+produced a false "254px" report. Consolidated into one rule (kept at
+the position of the former last block, so responsive `@media` override
+ordering is unchanged) carrying every property the merge previously
+resolved to, and removed the other three. Verified via
+`getComputedStyle` before and after: identical output.
+
+INPUT HEIGHT — `.modal-section input`/`.property-modal .modal-section
+select` (the "+ Add property" modal's site/block/unit fields, Faz 3)
+was 44px, below Section 14's 48-52px range. Raised to 48px, matching
+`.modal input` (tenant form) and `.settings-field input` (Faz 4).
+
 CONTRACT-ALERT COUNTDOWN COLOR: the "Sözleşme uyarıları" panel on
 Genel Bakış colors its remaining-days figure by urgency: under 30
 days is danger (default `.days` color), 30–89 days is `.days.warning`
