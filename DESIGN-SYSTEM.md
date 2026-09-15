@@ -1551,30 +1551,70 @@ h1, description, icons, kicker, secure-login badge, role-picker,
 fields, options, divider, security note) keeps `both`, because nothing
 ever needs to move *them* again after entrance.
 
-Floating paths (item 4, third rewrite): a single 26-arc layer —
-concentric-ish elliptical arcs fanned around one anchor point near
-where the building photo begins, via the golden angle (137.508°×i,
-deterministic, not `Math.random()` — identical on every page load) —
-reading as architectural contour lines / a compass rose rather than
-directional "rain" (the second iteration's look) or two crossing
-diagonal layers (the first correction's look). Each `<path>` carries
-`pathLength="100"` (an SVG attribute, not a JS convenience) so the
-shared `@keyframes` can use one literal 0–100 dasharray/dashoffset
-scale regardless of that path's real on-screen length, which varies
-by radius (70–340, banded by index). Motion: dasharray grows from a
-6%-length spark to a 50%-length segment while dashoffset slides it and
-opacity breathes 0.08→0.28, via `animation-direction:alternate` on one
-authored 0%→100% keyframe (same "comet" technique proven in the
-previous iteration, now carried over unchanged since it solved the
-earlier "provably moving but not visually perceptible" problem — see
-below). Duration is the brief's own exact formula, `22+i*0.35`s. Layer
-sits at `z-index:0`, strictly behind `.auth-property-visual`
-(`z-index:1`) — confirmed via a temporary high-contrast render with the
-photo dimmed to 15%, not assumed. Stroke is solid `#9DDCC4` with the
-full 0.08–0.28 alpha coming from the shared CSS `opacity` keyframe, so
-no per-path `stroke-opacity` attribute is needed this time. `.auth-visual`
-is already `display:none` at ≤980px/≤767px (pre-existing, untouched),
-so the layer never renders or runs on mobile with no extra rule needed.
+Floating paths (item 4, third rewrite) — REMOVED and replaced (4th
+rewrite, this round): the 26-arc SVG layer described below is gone
+from both `app.js` and `styles.css`. In its place, two independent
+layers, both `z-index:2` — strictly above `.auth-property-visual`
+(`z-index:1`, still opacity:1, untouched) and strictly below the
+text/logo layer (`z-index:3`):
+
+1. **Rising particles** — a single `<canvas class="auth-particles">`,
+   created by the one JS function `buildAuthParticles()` (app.js) and
+   never by a build step or an npm dependency. Particle count scales
+   as `canvasArea/9000` (the brief's own formula), each particle a
+   small circle (`r:0.6–1.7px`) drifting upward at `0.05–0.30px/frame`
+   and wrapping back in from the bottom once it passes the top edge —
+   a plain per-frame `requestAnimationFrame` loop, no physics library.
+   Color is the same locked `#9DDCC4` at `0.15–0.35` random alpha per
+   particle (not the reference's white), composited with
+   `mix-blend-mode:screen` so it reads as light glinting off the scene
+   rather than a flat sprite sitting on top of the photo. The canvas is
+   sized in real (`devicePixelRatio`-scaled) pixels for crispness and
+   is fully recomputed on `resize`. It is deliberately never created at
+   all — not created-then-hidden — when `prefers-reduced-motion:
+   reduce` matches, or when the viewport is at or below the same
+   980px breakpoint that already hides `.auth-visual` on mobile
+   (matching that existing, untouched rule rather than inventing a new
+   one), so no background animation loop ever runs where nobody could
+   see it.
+2. **Grid-line draw-in** — six fixed `<span class="auth-grid-line h|v">`
+   elements, written directly into `index.html` (three horizontal,
+   three vertical; position and `--line-delay` custom property set
+   inline per span) because the count and stagger are fixed by the
+   brief (`.12s/.22s/.32s/.42s/.54s/.66s`), not derived at runtime —
+   so, unlike the particles, this needed no JS at all. Each line
+   `scaleX`/`scaleY`s from 0→1 over 0.85s
+   (`cubic-bezier(.22,.61,.36,1)`) once, `animation-fill-mode:forwards`
+   (not `infinite`), then a one-shot gradient "shimmer" sweeps along it
+   via a `::after` pseudo-element whose `animation-delay` is
+   `calc(var(--line-delay) + .85s)` — chained off the draw-in's own
+   delay+duration rather than a second hand-typed number, so the two
+   animations can never drift out of sync if the draw duration changes
+   later. Color is the same `#9DDCC4` at low alpha
+   (`0.16` base, `0.6` at the shimmer's peak). Under
+   `prefers-reduced-motion:reduce` the lines skip straight to their
+   drawn end state (`transform:scaleX(1) scaleY(1)`) with the shimmer
+   pseudo-element suppressed entirely, rather than freezing mid-draw.
+
+Both layers are pure CSS/canvas additions with no new npm dependency.
+
+Superseded description (kept for the historical record, not current
+behavior): a single 26-arc layer, concentric-ish elliptical arcs
+fanned around one anchor point near where the building photo begins,
+via the golden angle (137.508°×i, deterministic, not `Math.random()` —
+identical on every page load) — reading as architectural contour
+lines / a compass rose rather than directional "rain" (the second
+iteration's look) or two crossing diagonal layers (the first
+correction's look). Each `<path>` carried `pathLength="100"` (an SVG
+attribute, not a JS convenience) so the shared `@keyframes` could use
+one literal 0–100 dasharray/dashoffset scale regardless of that path's
+real on-screen length, which varied by radius (70–340, banded by
+index). Motion: dasharray grew from a 6%-length spark to a 50%-length
+segment while dashoffset slid it and opacity breathed 0.08→0.28, via
+`animation-direction:alternate` on one authored 0%→100% keyframe (the
+"comet" technique — see the note below on why). Duration was
+`22+i*0.35`s. Layer sat at `z-index:0`, strictly behind
+`.auth-property-visual` (`z-index:1`).
 
 Micro-interactions (items 5–15) are additive CSS `:hover`/`:active`/
 `:focus-within` rules plus small JS classes that get added and removed

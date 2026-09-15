@@ -324,24 +324,30 @@ body.drawer-locked{overflow:hidden}
   .tenant-portal .tenant-top .nav-hamburger{display:inline-flex}
 }
 
-/* Giriş ekranı — mimari kontur / pusula rotası hissi veren TEK katmanlı floating-paths.
-   TEK blok: SVG yapısı app.js'te tek fonksiyondan (buildAuthFloatingPaths) üretiliyor,
-   burada tek @keyframes var; ayrı path başına CSS kuralı yok. Her path'e JS'te
-   pathLength="100" SVG attribute'u veriliyor — böylece stroke-dasharray/dashoffset 0-100
-   ölçeğinde, path'in KENDİ gerçek uzunluğuna göre otomatik ölçekleniyor; farklı yarıçaplı
-   yaylar (hepsi farklı gerçek piksel uzunluğunda) AYNI literal keyframe değerlerini güvenle
-   paylaşabiliyor. calc(var(...)) İLE ANİMASYONLAMIYORUZ — Chromium'da interpole olmuyor,
-   bir önceki turda tespit edilip literal sayılara geçilmişti; aynı çözüm burada da geçerli.
-   Katman z-index:0 ile .auth-property-visual fotoğrafının (z-index:1) KESİN ARKASINDA —
-   "bina görselinin arkasında/çevresinde" isteğiyle birebir uyumlu. */
-.auth-floating-paths{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden}
-.auth-floating-paths path{fill:none;stroke-linecap:round;animation:authOrbitFlow var(--auth-path-duration,26s) ease-in-out infinite alternate;animation-delay:var(--auth-path-delay,0s)}
-@keyframes authOrbitFlow{
-  0%{stroke-dasharray:25 75;stroke-dashoffset:0;opacity:.08}
-  100%{stroke-dasharray:100 0;stroke-dashoffset:-9;opacity:.28}
-}
+/* Giriş ekranı — bina fotoğrafının (z-index:1) ÜSTÜNDE, metin/logo katmanının (z-index:3)
+   ALTINDA iki katman: (1) statik HTML'de duran 3+3 "çizilen" ince ızgara çizgisi (bu blok,
+   duraklı @keyframes + var(--line-delay) — JS'e gerek yok, sayı/gecikme sabit olduğundan
+   index.html'e doğrudan yazıldı), sayfa yüklenince BİR KEZ scaleX/scaleY 0→1 "çiziliyormuş"
+   gibi belirip bir kerelik shimmer geçişiyle sabitleniyor (infinite DEĞİL); (2) app.js'teki
+   tek fonksiyonun (buildAuthParticles) oluşturduğu <canvas>, sürekli yukarı süzülen ince
+   parçacıklar — bkz. app.js'teki yorum. İkisi de #9DDCC4 (kilitli mint) kullanıyor, ikisi de
+   pointer-events:none. Reduced-motion: çizgiler son (çizili) halinde donuyor, shimmer hiç
+   oynamıyor; canvas'ın kendisi (app.js) reduced-motion'da hiç oluşturulmuyor. */
+.auth-grid-lines{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+.auth-grid-line{position:absolute;transform-origin:center}
+.auth-grid-line.h{left:0;right:0;height:1px;background:rgba(157,220,196,.16);transform:scaleX(0);animation:authLineDrawH .85s cubic-bezier(.22,.61,.36,1) var(--line-delay,0s) forwards}
+.auth-grid-line.v{top:0;bottom:0;width:1px;background:rgba(157,220,196,.16);transform:scaleY(0);animation:authLineDrawV .85s cubic-bezier(.22,.61,.36,1) var(--line-delay,0s) forwards}
+.auth-grid-line:after{content:"";position:absolute;opacity:0;animation-duration:.7s;animation-timing-function:ease;animation-fill-mode:forwards;animation-delay:calc(var(--line-delay,0s) + .85s)}
+.auth-grid-line.h:after{top:0;left:-40%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(157,220,196,.6),transparent);animation-name:authLineShimmerH}
+.auth-grid-line.v:after{left:0;top:-40%;width:100%;height:40%;background:linear-gradient(180deg,transparent,rgba(157,220,196,.6),transparent);animation-name:authLineShimmerV}
+@keyframes authLineDrawH{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+@keyframes authLineDrawV{0%{transform:scaleY(0)}100%{transform:scaleY(1)}}
+@keyframes authLineShimmerH{0%{left:-40%;opacity:0}15%{opacity:1}100%{left:100%;opacity:0}}
+@keyframes authLineShimmerV{0%{top:-40%;opacity:0}15%{opacity:1}100%{top:100%;opacity:0}}
+.auth-particles{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;mix-blend-mode:screen}
 @media(prefers-reduced-motion:reduce){
-  .auth-floating-paths path{animation:none;stroke-dasharray:55 45;opacity:.14}
+  .auth-grid-line{animation:none!important;transform:scaleX(1) scaleY(1)!important}
+  .auth-grid-line:after{animation:none!important;display:none}
 }
 
 /* ================================================================================

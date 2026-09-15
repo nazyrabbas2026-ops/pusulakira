@@ -683,37 +683,55 @@ function bindNavDrawer(hamburgerBtn,navEl){if(!hamburgerBtn||!navEl||hamburgerBt
 window.matchMedia('(min-width:1280px)').addEventListener('change',event=>{if(event.matches)document.querySelectorAll('.sidebar.drawer-open,.tenant-sidebar.drawer-open').forEach(el=>closeNavDrawer(el,{restoreFocus:false}))});
 {let adminTopbar=document.querySelector('.topbar');if(adminTopbar&&!$('adminNavHamburger')){let hamburger=document.createElement('button');hamburger.type='button';hamburger.id='adminNavHamburger';hamburger.className='nav-hamburger';hamburger.setAttribute('aria-label',tr('common.menu'));hamburger.innerHTML='<i data-icon="menu"></i>';adminTopbar.insertBefore(hamburger,adminTopbar.firstChild);paintIcons(adminTopbar);bindNavDrawer(hamburger,document.querySelector('.app-shell .sidebar'))}}
 
-// Giriş ekranı — sakin arka plan hareketi: mimari kontur çizgileri / pusula rotaları
-// hissi veren TEK katmanlı, 26 adet ince eliptik yay. Altın açı (137.508°) ile deterministik
-// olarak fanlanıyor — Math.random() YOK, her sayfa yüklemesinde birebir aynı görünür. Tek
-// üretim fonksiyonu (buildAuthFloatingPaths), CSS tarafında tek @keyframes (styles.css).
-// Her path'e pathLength="100" SVG attribute'u veriliyor: farklı yarıçaplı yaylar farklı
-// gerçek uzunlukta olsa da, stroke-dasharray/dashoffset hepsinde AYNI 0-100 ölçeğinde
-// okunuyor — böylece tek bir literal (calc()/var() içermeyen) keyframe hepsine uyuyor.
-// z-index:0 (styles.css) ile bina fotoğrafının (z-index:1) KESİN ARKASINDA/ÇEVRESİNDE
-// durur. Sadece .auth-visual içine ekleniyor; mobilde panel zaten display:none olduğundan
-// (bkz. Faz 6) bu katman orada hiç render/animate edilmiyor — ek kod gerekmez.
-function buildAuthFloatingPaths(){
+// Giriş ekranı — bina fotoğrafının (z-index:1) üstünde, ince ve yavaş yükselen parçacıklar.
+// Statik ızgara çizgileri (index.html + styles.css, JS gerektirmiyor) ile birlikte çalışan
+// TEK JS fonksiyonu bu: tek <canvas>, tek rAF döngüsü. Yoğunluk canvas alanı/9000 ile
+// ölçekleniyor (referanstaki formül). Renk kilitli mint #9DDCC4, opaklık 0.15-0.35 arası
+// rastgele — referansın beyazı (rgba(250,250,250,...)) DEĞİL. mix-blend-mode:screen
+// (styles.css) bina fotoğrafını ezmeden hafif bir "ışıltı" hissi veriyor. Mobilde
+// (.auth-visual ≤980px'de zaten display:none) canvas'ın kendisi hiç OLUŞTURULMUYOR —
+// sadece CSS ile gizlemek yerine, gereksiz bir arka plan rAF döngüsünün hiç başlamaması
+// için burada açık bir matchMedia kontrolü var. Aynı şekilde prefers-reduced-motion'da da
+// canvas hiç kurulmuyor (statik bir son-kare göstermeye gerek yok, panel zaten resim+metin
+// olarak tam okunaklı).
+function buildAuthParticles(){
   const host=document.querySelector('.auth-visual');
-  if(!host||host.querySelector('.auth-floating-paths'))return;
-  const cx=400,cy=560,squash=0.62,count=26;
-  const paths=Array.from({length:count},(_,i)=>{
-    const radius=70+(i%7)*45;
-    const startAngle=(i*137.508)%360;
-    const sweep=130+(i%5)*18;
-    const a0=startAngle*Math.PI/180,a1=(startAngle+sweep)*Math.PI/180;
-    const x1=(cx+radius*Math.cos(a0)).toFixed(1),y1=(cy+radius*squash*Math.sin(a0)).toFixed(1);
-    const x2=(cx+radius*Math.cos(a1)).toFixed(1),y2=(cy+radius*squash*Math.sin(a1)).toFixed(1);
-    const largeArc=sweep>180?1:0;
-    const d=`M${x1} ${y1} A${radius} ${(radius*squash).toFixed(1)} 0 ${largeArc} 1 ${x2} ${y2}`;
-    const width=(0.5+(i/(count-1))*0.7).toFixed(2);
-    const duration=(22+i*0.35).toFixed(2);
-    const delay=(-(i*0.9)).toFixed(1);
-    return `<path pathLength="100" d="${d}" stroke="#9DDCC4" stroke-width="${width}" style="--auth-path-duration:${duration}s;--auth-path-delay:${delay}s"/>`;
-  }).join('');
-  host.insertAdjacentHTML('afterbegin',`<svg class="auth-floating-paths" viewBox="0 0 720 900" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>`);
+  if(!host||host.querySelector('.auth-particles'))return;
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  if(window.matchMedia('(max-width: 980px)').matches)return;
+  const canvas=document.createElement('canvas');
+  canvas.className='auth-particles';
+  canvas.setAttribute('aria-hidden','true');
+  host.appendChild(canvas);
+  const ctx=canvas.getContext('2d');
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  let w=0,h=0,particles=[];
+  const makeParticle=()=>({x:Math.random()*w,y:Math.random()*h,r:0.6+Math.random()*1.1,vy:0.05+Math.random()*0.25,o:0.15+Math.random()*0.20});
+  function resize(){
+    const rect=host.getBoundingClientRect();
+    w=rect.width;h=rect.height;
+    canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+    canvas.style.width=w+'px';canvas.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    const count=Math.max(12,Math.round((w*h)/9000));
+    particles=Array.from({length:count},makeParticle);
+  }
+  resize();
+  window.addEventListener('resize',resize);
+  (function frame(){
+    ctx.clearRect(0,0,w,h);
+    particles.forEach(p=>{
+      p.y-=p.vy;
+      if(p.y<-4){p.y=h+4;p.x=Math.random()*w}
+      ctx.beginPath();
+      ctx.fillStyle=`rgba(157,220,196,${p.o})`;
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fill();
+    });
+    requestAnimationFrame(frame);
+  })();
 }
-buildAuthFloatingPaths();
+buildAuthParticles();
 
 // Giriş ekranı — tek seferlik marka-paneli girişi (logo/eyebrow/başlık/açıklama/ikonlar/
 // bina fotoğrafı). .auth-visual statik HTML olduğundan tetikleyici class'ı burada bir kez
