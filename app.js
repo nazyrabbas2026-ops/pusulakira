@@ -705,7 +705,7 @@ function buildAuthParticles(){
   host.appendChild(canvas);
   const ctx=canvas.getContext('2d');
   const dpr=Math.min(window.devicePixelRatio||1,2);
-  let w=0,h=0,particles=[];
+  let w=0,h=0,particles=[],rafId=null;
   const makeParticle=()=>({x:Math.random()*w,y:Math.random()*h,r:0.6+Math.random()*1.1,vy:0.03+Math.random()*0.12,o:0.06+Math.random()*0.10});
   function resize(){
     const rect=host.getBoundingClientRect();
@@ -716,9 +716,7 @@ function buildAuthParticles(){
     const count=Math.max(8,Math.round((w*h)/17000));
     particles=Array.from({length:count},makeParticle);
   }
-  resize();
-  window.addEventListener('resize',resize);
-  (function frame(){
+  function frame(){
     ctx.clearRect(0,0,w,h);
     particles.forEach(p=>{
       p.y-=p.vy;
@@ -728,8 +726,19 @@ function buildAuthParticles(){
       ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
       ctx.fill();
     });
-    requestAnimationFrame(frame);
-  })();
+    rafId=requestAnimationFrame(frame);
+  }
+  window.addEventListener('resize',resize);
+  // Giriş ekranı gizlendiğinde (başarılı girişten sonra display:none) rAF döngüsü
+  // durur; tekrar görünür olduğunda (çıkış yapıldığında) boyutu yeniden hesaplayıp
+  // devam eder. Aksi halde animasyon oturum boyunca görünmez şekilde CPU tüketmeye
+  // devam ederdi.
+  const authScreen=document.getElementById('authScreen');
+  const isAuthVisible=()=>!authScreen||!authScreen.classList.contains('hidden');
+  function start(){if(rafId!==null||!isAuthVisible())return;resize();rafId=requestAnimationFrame(frame)}
+  function stop(){if(rafId===null)return;cancelAnimationFrame(rafId);rafId=null}
+  start();
+  if(authScreen)new MutationObserver(()=>{isAuthVisible()?start():stop()}).observe(authScreen,{attributes:true,attributeFilter:['class']});
 }
 buildAuthParticles();
 
