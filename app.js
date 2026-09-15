@@ -337,6 +337,8 @@ function upgradeAuthenticationCard(){
   $('corporateLogin').addEventListener('click',()=>{const lang=$('languageSelect')?.value||'tr';feedback.textContent=lang==='ru'?'Корпоративный вход ещё не настроен. Войдите с помощью имени и пароля.':lang==='en'?'Corporate sign-in is not configured. Continue with your full name and password.':'Kurumsal giriş bağlantısı yapılandırılmamış. Ad soyad ve parolanızla devam edin.'});
   $('rememberMe').checked=localStorage.getItem('kiraPanelRememberMe')==='1';$('rememberMe').addEventListener('change',()=>localStorage.setItem('kiraPanelRememberMe',$('rememberMe').checked?'1':'0'));
   renderAuth();
+  form.classList.remove('auth-card--anim');void form.offsetWidth;requestAnimationFrame(()=>form.classList.add('auth-card--anim'));
+  enhanceAuthMicroInteractions();
 }
 const basePasswordBuilder=buildPasswordAuthentication;buildPasswordAuthentication=function(){basePasswordBuilder();upgradeAuthenticationCard()};upgradeAuthenticationCard();
 
@@ -681,40 +683,109 @@ function bindNavDrawer(hamburgerBtn,navEl){if(!hamburgerBtn||!navEl||hamburgerBt
 window.matchMedia('(min-width:1280px)').addEventListener('change',event=>{if(event.matches)document.querySelectorAll('.sidebar.drawer-open,.tenant-sidebar.drawer-open').forEach(el=>closeNavDrawer(el,{restoreFocus:false}))});
 {let adminTopbar=document.querySelector('.topbar');if(adminTopbar&&!$('adminNavHamburger')){let hamburger=document.createElement('button');hamburger.type='button';hamburger.id='adminNavHamburger';hamburger.className='nav-hamburger';hamburger.setAttribute('aria-label',tr('common.menu'));hamburger.innerHTML='<i data-icon="menu"></i>';adminTopbar.insertBefore(hamburger,adminTopbar.firstChild);paintIcons(adminTopbar);bindNavDrawer(hamburger,document.querySelector('.app-shell .sidebar'))}}
 
-// Giriş ekranı — sakin arka plan hareketi: iki katman, 36'şar geniş çapraz SVG çizgisi,
-// birbirine ZIT yönde akıyor (referans "FloatingPaths" bileşeninin position={1}/{-1} ikilisine
-// karşılık gelir). Tek üretim fonksiyonu (buildAuthFloatingPaths) her iki katmanı da aynı iç
-// `layer()` yardımcısından parametreyle üretir; CSS tarafında tek @keyframes (styles.css).
-// Arka katman (position=1, daha kalın) bina fotoğrafının ARKASINDA, ön katman (position=-1,
-// çok ince/soluk) fotoğrafın ÖNÜNDE ama metnin ARKASINDA durur — bu derinlik farkı çizgilerin
-// binanın içinden geçtiği hissini verir. Sadece .auth-visual içine ekleniyor; mobilde panel
-// zaten display:none olduğundan animasyon orada hiç render edilmiyor.
+// Giriş ekranı — sakin arka plan hareketi: mimari kontur çizgileri / pusula rotaları
+// hissi veren TEK katmanlı, 26 adet ince eliptik yay. Altın açı (137.508°) ile deterministik
+// olarak fanlanıyor — Math.random() YOK, her sayfa yüklemesinde birebir aynı görünür. Tek
+// üretim fonksiyonu (buildAuthFloatingPaths), CSS tarafında tek @keyframes (styles.css).
+// Her path'e pathLength="100" SVG attribute'u veriliyor: farklı yarıçaplı yaylar farklı
+// gerçek uzunlukta olsa da, stroke-dasharray/dashoffset hepsinde AYNI 0-100 ölçeğinde
+// okunuyor — böylece tek bir literal (calc()/var() içermeyen) keyframe hepsine uyuyor.
+// z-index:0 (styles.css) ile bina fotoğrafının (z-index:1) KESİN ARKASINDA/ÇEVRESİNDE
+// durur. Sadece .auth-visual içine ekleniyor; mobilde panel zaten display:none olduğundan
+// (bkz. Faz 6) bu katman orada hiç render/animate edilmiyor — ek kod gerekmez.
 function buildAuthFloatingPaths(){
   const host=document.querySelector('.auth-visual');
   if(!host||host.querySelector('.auth-floating-paths'))return;
-  const hash=n=>{const s=Math.sin(n*12.9898)*43758.5453;return s-Math.floor(s)};
-  const layer=(position,opts)=>{
-    const y0=-190,y1=1200,driftX=560*position;
-    const paths=Array.from({length:36},(_,i)=>{
-      const x0=-160+i*18;
-      const cx1=x0+driftX*0.28,cy1=y0+(y1-y0)*0.34;
-      const cx2=x0+driftX*0.62,cy2=y0+(y1-y0)*0.7;
-      const xEnd=x0+driftX;
-      const d=`M${x0.toFixed(0)} ${y0}C${cx1.toFixed(0)} ${cy1.toFixed(0)} ${cx2.toFixed(0)} ${cy2.toFixed(0)} ${xEnd.toFixed(0)} ${y1}`;
-      const frac=i/35;
-      const opacity=(opts.opMin+frac*(opts.opMax-opts.opMin)).toFixed(3);
-      const width=(opts.wMin+frac*(opts.wMax-opts.wMin)).toFixed(2);
-      const r1=hash(i+position*7.3),r2=hash(i*3.1+position*1.7);
-      const duration=(14+r1*8).toFixed(1);
-      const delay=(-(r2*duration)).toFixed(1);
-      return `<path d="${d}" stroke="#9DDCC4" stroke-width="${width}" stroke-opacity="${opacity}" style="--auth-path-duration:${duration}s;--auth-path-delay:${delay}s"/>`;
-    }).join('');
-    return `<svg id="${opts.id}" class="auth-floating-paths auth-floating-paths--${opts.cls}" viewBox="0 0 720 900" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>`;
-  };
-  const back=layer(1,{id:'authFloatingPathsBack',cls:'back',opMin:.05,opMax:.15,wMin:.6,wMax:1.4});
-  const front=layer(-1,{id:'authFloatingPathsFront',cls:'front',opMin:.04,opMax:.08,wMin:.35,wMax:.7});
-  host.insertAdjacentHTML('afterbegin',back);
-  const photo=host.querySelector('.auth-property-visual');
-  (photo||host).insertAdjacentHTML(photo?'afterend':'beforeend',front);
+  const cx=400,cy=560,squash=0.62,count=26;
+  const paths=Array.from({length:count},(_,i)=>{
+    const radius=70+(i%7)*45;
+    const startAngle=(i*137.508)%360;
+    const sweep=130+(i%5)*18;
+    const a0=startAngle*Math.PI/180,a1=(startAngle+sweep)*Math.PI/180;
+    const x1=(cx+radius*Math.cos(a0)).toFixed(1),y1=(cy+radius*squash*Math.sin(a0)).toFixed(1);
+    const x2=(cx+radius*Math.cos(a1)).toFixed(1),y2=(cy+radius*squash*Math.sin(a1)).toFixed(1);
+    const largeArc=sweep>180?1:0;
+    const d=`M${x1} ${y1} A${radius} ${(radius*squash).toFixed(1)} 0 ${largeArc} 1 ${x2} ${y2}`;
+    const width=(0.5+(i/(count-1))*0.7).toFixed(2);
+    const duration=(22+i*0.35).toFixed(2);
+    const delay=(-(i*0.9)).toFixed(1);
+    return `<path pathLength="100" d="${d}" stroke="#9DDCC4" stroke-width="${width}" style="--auth-path-duration:${duration}s;--auth-path-delay:${delay}s"/>`;
+  }).join('');
+  host.insertAdjacentHTML('afterbegin',`<svg class="auth-floating-paths" viewBox="0 0 720 900" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>`);
 }
 buildAuthFloatingPaths();
+
+// Giriş ekranı — tek seferlik marka-paneli girişi (logo/eyebrow/başlık/açıklama/ikonlar/
+// bina fotoğrafı). .auth-visual statik HTML olduğundan tetikleyici class'ı burada bir kez
+// ekleniyor. GÜVENLİ FALLBACK: bu satır hiç çalışmasa/hata verse bile class hiç eklenmez ve
+// styles.css'te opacity SADECE ".auth-visual--anim" class'ıyla birlikte sıfırlandığından
+// (bkz. styles.css) bina fotoğrafı dahil tüm içerik normal CSS varsayılanıyla (opacity:1)
+// tam görünür kalır.
+requestAnimationFrame(()=>document.querySelector('.auth-visual')?.classList.add('auth-visual--anim'));
+
+// Rol seçici ikon "pop", parola göster/gizle ikon geçişi, giriş butonu yükleme etiketi ve
+// dokunmatik press geri bildirimi — SADECE görsel; hiçbiri mevcut authentication mantığına
+// (fetch/validation/redirect, submit/disabled akışı) dokunmuyor, tamamen ek (additive)
+// event listener'lar. upgradeAuthenticationCard() form.innerHTML'i her yeniden ürettiğinde
+// (ilk yükleme + çıkış sonrası) çağrılır, böylece her seferinde TAZE elemanlara bağlanır.
+function enhanceAuthMicroInteractions(){
+  const form=$('authForm');if(!form)return;
+  form.querySelectorAll('[data-password-role]').forEach(btn=>btn.addEventListener('click',()=>{
+    const icon=btn.querySelector('.role-icon');if(!icon)return;
+    icon.classList.remove('role-icon-pop');void icon.offsetWidth;icon.classList.add('role-icon-pop');
+  }));
+  const toggle=$('passwordVisibilityToggle');
+  if(toggle)toggle.addEventListener('click',()=>{
+    const icon=toggle.querySelector('i');if(!icon)return;
+    icon.classList.remove('icon-swap');void icon.offsetWidth;icon.classList.add('icon-swap');
+  });
+  const submit=$('passwordAuthSubmit');
+  if(submit){
+    const loadingText={tr:'Giriş yapılıyor',en:'Signing in',ru:'Выполняется вход'};
+    let restoreLabel=null;
+    new MutationObserver(()=>{
+      const span=submit.querySelector('span');if(!span)return;
+      if(submit.disabled){
+        if(restoreLabel===null)restoreLabel=span.textContent;
+        const lang=$('languageSelect')?.value||'tr';
+        span.textContent=loadingText[lang]||loadingText.tr;
+        submit.classList.add('is-loading');
+      }else{
+        submit.classList.remove('is-loading');
+        if(restoreLabel!==null){span.textContent=restoreLabel;restoreLabel=null}
+      }
+    }).observe(submit,{attributes:true,attributeFilter:['disabled']});
+    const press=on=>submit.classList.toggle('is-pressed',on);
+    submit.addEventListener('touchstart',()=>press(true),{passive:true});
+    submit.addEventListener('touchend',()=>press(false));
+    submit.addEventListener('touchcancel',()=>press(false));
+  }
+}
+
+// (Opsiyonel, madde 16) Masaüstünde çok hafif işaretçi parallax'ı — sadece transform,
+// rAF ile throttle'lı (sürekli JS state update yok), ince (max 6px) hareket. Sadece gerçek
+// fare imleci olan geniş masaüstünde çalışır; dokunmatik/mobil/tablet ve reduced-motion'da
+// hiç bağlanmaz. Performans sorunlu görünürse bu blok tek başına kaldırılabilir.
+(function initAuthPointerParallax(){
+  const canRun=()=>matchMedia('(pointer:fine)').matches&&matchMedia('(min-width:1181px)').matches&&!matchMedia('(prefers-reduced-motion:reduce)').matches;
+  if(!canRun())return;
+  const visual=document.querySelector('.auth-visual');if(!visual)return;
+  let raf=null,tx=0,ty=0;
+  const apply=()=>{
+    raf=null;
+    const photo=visual.querySelector('.auth-property-visual'),quote=visual.querySelector('.auth-quote'),brand=visual.querySelector('.auth-brand-row');
+    if(photo)photo.style.transform=`translate(${tx*0.6}px,${ty*0.6}px)`;
+    if(quote)quote.style.transform=`translate(${tx*-0.3}px,${ty*-0.3}px)`;
+    if(brand)brand.style.transform=`translate(${tx*-0.15}px,${ty*-0.15}px)`;
+  };
+  visual.addEventListener('pointermove',event=>{
+    if(!canRun())return;
+    const rect=visual.getBoundingClientRect();
+    const px=(event.clientX-rect.left)/rect.width-0.5,py=(event.clientY-rect.top)/rect.height-0.5;
+    tx=px*12;ty=py*10;
+    if(!raf)raf=requestAnimationFrame(apply);
+  });
+  visual.addEventListener('pointerleave',()=>{
+    tx=0;ty=0;if(!raf)raf=requestAnimationFrame(apply);
+  });
+})();

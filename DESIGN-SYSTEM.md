@@ -1492,67 +1492,125 @@ tenant view reachable and overflow-free at every breakpoint, and a
 reload-regression check (Faz 4's loadAdminData fix) re-run at all 4
 widths.
 
-LOGIN — FLOATING PATHS BACKGROUND: `.auth-visual` (the dark left marketing
-panel) gets a calm animated layer adapted from a widely-used React/
-framer-motion "FloatingPaths" reference into plain SVG + CSS, zero new
-dependencies. Two mirrored 36-line groups (`.auth-floating-paths--back`,
-`--front`), matching the reference's `position={1}`/`position={-1}` pair:
-both share the same top-edge fan of start points but drift 560 units in
-OPPOSITE horizontal directions before exiting off-canvas bottom, so the
-two groups visibly cross in a wide corner-to-corner weave rather than
-sitting parallel — proven via a temporary high-contrast (red/yellow)
-debug render, not assumed. One JS function (`buildAuthFloatingPaths`)
-generates both layers through a shared inner `layer(position, opts)`
-helper; one CSS `@keyframes` block drives both (no per-path or per-layer
-duplicate rules). Depth: `--back` (z-index:0, thicker 0.6–1.4px strokes)
-sits strictly behind `.auth-property-visual` (z-index:1); `--front`
-(z-index:2, thinner 0.35–0.7px strokes, fainter 0.04–0.08 opacity) sits
-above the photo but below the marketing text (z-index:3) — three
-distinct z-index values, no DOM-order tie-breaking. Motion is a
-"comet" — animation-direction:alternate plays one authored 0%→100%
-keyframe forward then automatically reverses it (no hand-authored
-back-half, no seam): stroke-dasharray grows a visible segment from 6%
-to 50% of the path's own length while stroke-dashoffset slides it
-along, and opacity breathes 0.45→1 in the same keyframe (answers both
-"ileri-geri salınım" and "nefes alan opaklık" from the brief in one
-mechanism). Duration is 14–22s per path (`--auth-path-duration`), each
-path's duration/delay pseudo-randomized via a sine-hash so the 72 lines
-desync instead of pulsing in lockstep. Stroke is `#9DDCC4` (locked mint)
-at 0.04–0.15 opacity — no new color introduced. Respects
-`prefers-reduced-motion: reduce` (animation stops entirely, lines stay
-visible as a static pattern). `.auth-visual` is already `display:none`
-at ≤980px and ≤767px (two separate pre-existing rules, not touched
-here) — mobile and most of what would be "tablet" width already hide
-the whole panel, so both layers naturally never render or run there
-with no extra media query needed. Deliberately shipped with only these
-two layers, not a third "rising particles" layer the brief allowed as
-optional: with two already-crossing animated groups in a small panel,
-a third would start competing with itself, against the brief's own §4
-principle, for a marketing panel that's disabled below 980px anyway.
+LOGIN — MICRO-INTERACTION SYSTEM (current, third iteration): the whole
+`#authScreen` (both the dark `.auth-visual` marketing panel and the white
+`.auth-card` form) now carries a small, coordinated motion system, entirely
+vanilla CSS animation/transition + vanilla JS — no Framer Motion, no new
+dependency, scoped only to the auth screen. Central "motion tokens" live as
+CSS custom properties on `.auth-screen` (`--motion-fast:180ms`,
+`--motion-normal:250ms`, `--motion-entrance:650ms`, `--motion-ease`,
+`--motion-ease-out`) so no timing value is hand-typed twice.
 
-Note on an earlier draft of this effect: a first pass used a single
-non-mirrored layer with a repeating small-period dash pattern
-(stroke-dasharray "150 46") animating a symmetric 0→-1700→0
-stroke-dashoffset. It was numerically provably moving but visually
-static in screenshots for two compounding reasons — the dash period
-happened to nearly alias against a 2s sampling interval, and more
-fundamentally a small-period dash at 0.04–0.15 opacity produces too
-small a per-frame contrast delta for the human eye to register in a
-still image, even though live motion at that same contrast would read
-fine to a human's motion-specific visual pathways. The single-segment
-"comet" approach above was chosen specifically because it changes a
-large, structural fraction of the visible line per cycle (6%→50% of
-its length), which is unambiguous in both live viewing and stills.
-Also on that draft: animating `stroke-dasharray`/`stroke-dashoffset`
-via `calc(var(--custom-property) * fraction)` inside `@keyframes` did
-not interpolate in testing (Chromium locked the computed value at the
-0% keyframe and only jumped at 100%) — confirmed by reading
-`getComputedStyle(...).strokeDasharray` at multiple time offsets, not
-assumed from the visual symptom alone. The fix was to bake literal
-pixel numbers into the keyframe (all 36 paths in a layer share one
-path length by construction, since only the horizontal start point
-varies) instead of computing them from a custom property at animation
-time.
+Entrance (once per screen "appearance", not on language/role/mode toggles):
+`.auth-visual` and `.auth-card` each get an "--anim" trigger class added
+exactly once by JS — `.auth-visual--anim` via a single `requestAnimationFrame`
+call at script load (the panel is static HTML), `.auth-card--anim` inside
+`upgradeAuthenticationCard()` (re-added on every call, i.e. init + after
+logout, since that's a genuine fresh "screen appearance"). SAFE FALLBACK BY
+DESIGN: no element has `opacity:0` in any unconditional/base rule — every
+entrance keyframe's hidden start state is scoped under the "--anim" class,
+so if that JS line ever fails to run, every element renders at its normal
+CSS default (opacity:1) instead of getting stuck invisible. Logo→eyebrow→
+title→description→icons on the visual side, and kicker→title→description→
+role-picker→fields→options→submit→divider→security-note on the card side,
+stagger via per-element `animation-delay` (0.02s→0.6s), each a plain
+`opacity:0,translateY(12px) → opacity:1,translateY(0)` over
+`--motion-entrance`. The building photo (`.auth-property-visual`) gets its
+own slower `authBuildingIn` (opacity 0→1, scale 1.025→1, 1.4s) — deliberately
+slower than the text for a "cinematic" depth read, and verified via
+`getComputedStyle(...).opacity === '1'` plus a real screenshot after the
+animation settles, not assumed, because an earlier draft in this project's
+history had reportedly lost the photo entirely.
+
+BUG FOUND AND FIXED — `animation-fill-mode:both` permanently locks a
+property, even for JS written *after* the animation "finishes": the
+building photo, the logo row, and the primary submit button all needed
+their `transform` to keep working *after* entrance completed — the photo
+and logo row for the optional pointer-parallax (item 16), the submit
+button for `:hover`/`:active`/`.is-pressed`/`.is-loading`. Using `both` as
+the fill-mode on their entrance `animation` seemed harmless (it just
+"holds the last frame"), but `both` keeps the animation permanently
+"in effect", and CSS gives a running/held animation's computed value
+priority over *any* later inline-style or class-driven change to that
+same property — so every subsequent `element.style.transform=...` or
+`.classList.add('is-pressed')` was silently overridden back to the
+animation's own held value, forever. This was invisible in code review
+and only surfaced by testing: a brand-new, unrelated `<button
+class="auth-primary">` inserted into `.auth-card--anim` at runtime came
+up with `transform: matrix(1,0,0,1,0,12)` — exactly the entrance
+keyframe's *0%* state — proving the animation, not the inline style,
+was winning. The fix is `animation-fill-mode:backwards` instead of
+`both` on exactly these three rules (`.auth-brand-row`,
+`.auth-property-visual`, `.auth-primary`), paired with an explicit
+plain `opacity:1` declared alongside — `backwards` still shows the
+hidden state during the `animation-delay`, but once the animation ends
+it hands control of `transform` back to the normal cascade, landing on
+that explicit resting rule (visually identical to the keyframe's 100%
+state, so no jump). Every other entrance-animated element (eyebrow,
+h1, description, icons, kicker, secure-login badge, role-picker,
+fields, options, divider, security note) keeps `both`, because nothing
+ever needs to move *them* again after entrance.
+
+Floating paths (item 4, third rewrite): a single 26-arc layer —
+concentric-ish elliptical arcs fanned around one anchor point near
+where the building photo begins, via the golden angle (137.508°×i,
+deterministic, not `Math.random()` — identical on every page load) —
+reading as architectural contour lines / a compass rose rather than
+directional "rain" (the second iteration's look) or two crossing
+diagonal layers (the first correction's look). Each `<path>` carries
+`pathLength="100"` (an SVG attribute, not a JS convenience) so the
+shared `@keyframes` can use one literal 0–100 dasharray/dashoffset
+scale regardless of that path's real on-screen length, which varies
+by radius (70–340, banded by index). Motion: dasharray grows from a
+6%-length spark to a 50%-length segment while dashoffset slides it and
+opacity breathes 0.08→0.28, via `animation-direction:alternate` on one
+authored 0%→100% keyframe (same "comet" technique proven in the
+previous iteration, now carried over unchanged since it solved the
+earlier "provably moving but not visually perceptible" problem — see
+below). Duration is the brief's own exact formula, `22+i*0.35`s. Layer
+sits at `z-index:0`, strictly behind `.auth-property-visual`
+(`z-index:1`) — confirmed via a temporary high-contrast render with the
+photo dimmed to 15%, not assumed. Stroke is solid `#9DDCC4` with the
+full 0.08–0.28 alpha coming from the shared CSS `opacity` keyframe, so
+no per-path `stroke-opacity` attribute is needed this time. `.auth-visual`
+is already `display:none` at ≤980px/≤767px (pre-existing, untouched),
+so the layer never renders or runs on mobile with no extra rule needed.
+
+Micro-interactions (items 5–15) are additive CSS `:hover`/`:active`/
+`:focus-within` rules plus small JS classes that get added and removed
+around a real event (`role-icon-pop`, `icon-swap` on the password toggle,
+`is-pressed` via `touchstart`/`touchend` for reliable mobile press
+feedback, `is-loading` via a `MutationObserver` on the submit button's
+`disabled` attribute — chosen specifically so it never touches the actual
+auth fetch/validation/redirect logic, just observes the same
+`submit.disabled=true/false` that flow already sets and swaps the visible
+label to "Giriş yapılıyor" / "Signing in" / "Выполняется вход" and back to
+whatever the original label was). The two large decorative circles
+(`.auth-visual:before`, `.auth-card-wrap:before`) get a slow (28–30s)
+`rotate`/`translate` drift added directly onto their existing declaration
+— not a new duplicate selector.
+
+Note on why the floating-paths motion had to be a growing/sliding "comet"
+(single segment growing 6%→50% of the path's own length) rather than a
+small repeating dash pattern sliding via dashoffset alone: an earlier
+iteration of this exact effect was numerically provably animating
+(`getComputedStyle` showed `stroke-dashoffset` changing every frame) but
+read as completely static in side-by-side screenshots. Two compounding
+causes: the small dash-repeat period happened to nearly alias against a
+2-second screenshot sampling interval (each repeat nearly realigned with
+the previous sample, like a strobe-lit spinning wheel), and more
+fundamentally a small-period dash at 0.04–0.28 opacity produces too small
+a per-frame *contrast delta* for a still image to show, even though the
+same live motion reads fine to a human eye's motion-specific visual
+pathways. Changing a large, structural fraction of the drawn length per
+cycle sidesteps both problems at once. Also carried over: animating
+`stroke-dasharray`/`stroke-dashoffset` via `calc(var(--custom-property) *
+fraction)` inside `@keyframes` does not interpolate in this Chromium
+build — the computed value stays locked at the keyframe's start and only
+jumps at the end — confirmed by reading `getComputedStyle(...)
+.strokeDasharray` at several time offsets, not assumed from the visual
+symptom. The fix both times was literal, pre-computed numbers baked
+directly into the keyframe rather than a custom-property/calc() indirection.
 
 CONTRACT-ALERT COUNTDOWN COLOR: the "Sözleşme uyarıları" panel on
 Genel Bakış colors its remaining-days figure by urgency: under 30
