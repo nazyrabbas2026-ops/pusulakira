@@ -6,9 +6,14 @@
     <title>PusulaKira — Emlak ve Kira Yönetimi</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js"></script>
+    <!-- Google Fonts kasıtlı olarak render-blocking DEĞİL: media="print" ile düşük öncelikte
+         indirilir, onload'da media="all" yapılıp uygulanır. Sebep: styles.css zaten kritik
+         auth-screen/position:fixed korumasını taşıyor; fontlar yavaş/asılı kaldığında bile
+         sayfanın (ve login ekranının) render'ı bloklanmamalı. -->
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.1/chart.umd.min.js" defer></script>
   </head>
   <body>
     <section class="auth-screen" id="authScreen" aria-label="PusulaKira üyelik ekranı">
