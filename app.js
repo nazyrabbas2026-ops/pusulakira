@@ -680,3 +680,23 @@ function closeNavDrawer(navEl,options={}){if(!navEl||!navEl.classList.contains('
 function bindNavDrawer(hamburgerBtn,navEl){if(!hamburgerBtn||!navEl||hamburgerBtn.dataset.drawerBound)return;hamburgerBtn.dataset.drawerBound='1';navEl.__navDrawerTrigger=hamburgerBtn;hamburgerBtn.setAttribute('aria-expanded','false');hamburgerBtn.addEventListener('click',()=>{navEl.classList.contains('drawer-open')?closeNavDrawer(navEl):openNavDrawer(navEl,hamburgerBtn)});navDrawerOverlay().addEventListener('click',()=>closeNavDrawer(navEl));navEl.addEventListener('click',event=>{if(event.target.closest('[data-page],[data-tenant-target]'))closeNavDrawer(navEl,{restoreFocus:false})});navEl.addEventListener('keydown',event=>{if(event.key==='Escape'){closeNavDrawer(navEl);return}if(event.key!=='Tab'||!navEl.classList.contains('drawer-open'))return;let focusable=[...navEl.querySelectorAll('button,a[href],[tabindex],input,select')].filter(el=>el.offsetParent);if(!focusable.length)return;let first=focusable[0],last=focusable[focusable.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}})}
 window.matchMedia('(min-width:1280px)').addEventListener('change',event=>{if(event.matches)document.querySelectorAll('.sidebar.drawer-open,.tenant-sidebar.drawer-open').forEach(el=>closeNavDrawer(el,{restoreFocus:false}))});
 {let adminTopbar=document.querySelector('.topbar');if(adminTopbar&&!$('adminNavHamburger')){let hamburger=document.createElement('button');hamburger.type='button';hamburger.id='adminNavHamburger';hamburger.className='nav-hamburger';hamburger.setAttribute('aria-label',tr('common.menu'));hamburger.innerHTML='<i data-icon="menu"></i>';adminTopbar.insertBefore(hamburger,adminTopbar.firstChild);paintIcons(adminTopbar);bindNavDrawer(hamburger,document.querySelector('.app-shell .sidebar'))}}
+
+// Giriş ekranı — sakin arka plan hareketi: 36 paralel, yavaşça akan SVG çizgisi.
+// Tek üretim fonksiyonu, tek SVG yapısı; CSS tarafında tek @keyframes (styles.css).
+// Sadece .auth-visual (masaüstü/tablet marka paneli) içine ekleniyor; mobilde bu panel
+// zaten display:none olduğundan animasyon orada hiç render edilmiyor, ekstra kod gerekmez.
+function buildAuthFloatingPaths(){
+  const host=document.querySelector('.auth-visual');
+  if(!host||$('authFloatingPaths'))return;
+  const paths=Array.from({length:36},(_,i)=>{
+    const x=-80+i*16;
+    const d=`M${x} -100C${x-60} 220 ${x+220} 340 ${x+70} 580C${x-60} 780 ${x+260} 840 ${x+150} 1020`;
+    const opacity=(0.035+i*0.0032).toFixed(3);
+    const width=(0.5+i*0.025).toFixed(2);
+    const duration=(20+(i*0.28)%10).toFixed(1);
+    const delay=(-(i*0.55)).toFixed(1);
+    return `<path d="${d}" stroke="#9DDCC4" stroke-width="${width}" stroke-opacity="${opacity}" style="--auth-path-duration:${duration}s;--auth-path-delay:${delay}s"/>`;
+  }).join('');
+  host.insertAdjacentHTML('afterbegin',`<svg id="authFloatingPaths" class="auth-floating-paths" viewBox="0 0 500 900" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>`);
+}
+buildAuthFloatingPaths();

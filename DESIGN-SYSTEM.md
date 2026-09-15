@@ -1492,6 +1492,34 @@ tenant view reachable and overflow-free at every breakpoint, and a
 reload-regression check (Faz 4's loadAdminData fix) re-run at all 4
 widths.
 
+LOGIN — FLOATING PATHS BACKGROUND: `.auth-visual` (the dark left marketing
+panel) gets a calm animated layer — 36 parallel curved SVG lines, drawn
+with a long stroke-dasharray (900/60) whose stroke-dashoffset animates
+over 20-30s per-path durations, so each reads as a near-continuous
+flowing curve rather than a dotted trail. One shared `#authFloatingPaths`
+SVG built by one JS function (`buildAuthFloatingPaths`) and one CSS
+block/`@keyframes` — no per-path CSS rules; each path only carries its
+own `--auth-path-duration`/`--auth-path-delay` custom properties inline.
+Adapted from a widely-used React/framer-motion "FloatingPaths" reference
+into plain SVG + CSS, zero new dependencies. Stroke is `#9DDCC4` (locked
+mint) at 0.035–0.15 opacity — no new color introduced. Layer sits at
+z-index:1, inserted as `.auth-visual`'s first child, so both the
+building photo and the marketing text (which already carries its own
+z-index:1) paint above it — confirmed via `elementFromPoint` at the
+headline's center, not assumed. Respects `prefers-reduced-motion:
+reduce` (animation stops, lines stay visible as a static pattern).
+`.auth-visual` is already `display:none` at ≤980px and ≤767px (two
+separate pre-existing rules, not touched here) — mobile and most of
+what would be "tablet" width already hide the whole panel, so the
+animation naturally never renders or runs there with no extra media
+query needed. Deliberately shipped with ONLY this one effect, not the
+optional second "rising particles" layer the brief allowed: the brief's
+own §4 principle ("decoration must never compete with itself, let alone
+content") argues against stacking two independent low-opacity animated
+layers in the same small panel, and a second animated layer would double
+the CPU/battery cost for a marketing panel that is explicitly disabled
+below 980px anyway. One well-tuned effect over two competing ones.
+
 CONTRACT-ALERT COUNTDOWN COLOR: the "Sözleşme uyarıları" panel on
 Genel Bakış colors its remaining-days figure by urgency: under 30
 days is danger (default `.days` color), 30–89 days is `.days.warning`
