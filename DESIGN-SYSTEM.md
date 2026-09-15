@@ -1515,106 +1515,112 @@ title→description→icons on the visual side, and kicker→title→description
 role-picker→fields→options→submit→divider→security-note on the card side,
 stagger via per-element `animation-delay` (0.02s→0.6s), each a plain
 `opacity:0,translateY(12px) → opacity:1,translateY(0)` over
-`--motion-entrance`. The building photo (`.auth-property-visual`) gets its
-own slower `authBuildingIn` (opacity 0→1, scale 1.025→1, 1.4s) — deliberately
-slower than the text for a "cinematic" depth read, and verified via
-`getComputedStyle(...).opacity === '1'` plus a real screenshot after the
-animation settles, not assumed, because an earlier draft in this project's
-history had reportedly lost the photo entirely.
+`--motion-entrance`. The building photo (`.auth-property-visual`) used to
+get its own slower `authBuildingIn` (opacity 0→1, scale 1.025→1, 1.4s) —
+REMOVED in a later round per an explicit "the photo must never move, ever,
+under any circumstance" request; it now carries no animation rule at all
+and simply renders at its plain CSS resting state (`opacity` unset = `1`)
+from the first frame, exactly like the always-safe fallback every other
+entrance-animated element already had.
 
-BUG FOUND AND FIXED — `animation-fill-mode:both` permanently locks a
-property, even for JS written *after* the animation "finishes": the
-building photo, the logo row, and the primary submit button all needed
-their `transform` to keep working *after* entrance completed — the photo
-and logo row for the optional pointer-parallax (item 16), the submit
-button for `:hover`/`:active`/`.is-pressed`/`.is-loading`. Using `both` as
-the fill-mode on their entrance `animation` seemed harmless (it just
-"holds the last frame"), but `both` keeps the animation permanently
-"in effect", and CSS gives a running/held animation's computed value
-priority over *any* later inline-style or class-driven change to that
-same property — so every subsequent `element.style.transform=...` or
-`.classList.add('is-pressed')` was silently overridden back to the
-animation's own held value, forever. This was invisible in code review
-and only surfaced by testing: a brand-new, unrelated `<button
-class="auth-primary">` inserted into `.auth-card--anim` at runtime came
-up with `transform: matrix(1,0,0,1,0,12)` — exactly the entrance
-keyframe's *0%* state — proving the animation, not the inline style,
-was winning. The fix is `animation-fill-mode:backwards` instead of
-`both` on exactly these three rules (`.auth-brand-row`,
-`.auth-property-visual`, `.auth-primary`), paired with an explicit
-plain `opacity:1` declared alongside — `backwards` still shows the
-hidden state during the `animation-delay`, but once the animation ends
-it hands control of `transform` back to the normal cascade, landing on
-that explicit resting rule (visually identical to the keyframe's 100%
-state, so no jump). Every other entrance-animated element (eyebrow,
-h1, description, icons, kicker, secure-login badge, role-picker,
-fields, options, divider, security note) keeps `both`, because nothing
-ever needs to move *them* again after entrance.
+BUG FOUND AND FIXED (historical — the photo has since been removed from
+this pattern entirely, see above) — `animation-fill-mode:both`
+permanently locks a property, even for JS written *after* the animation
+"finishes": the building photo, the logo row, and the primary submit
+button all needed their `transform` to keep working *after* entrance
+completed — the photo and logo row for the optional pointer-parallax
+(item 16), the submit button for `:hover`/`:active`/`.is-pressed`/
+`.is-loading`. Using `both` as the fill-mode on their entrance
+`animation` seemed harmless (it just "holds the last frame"), but
+`both` keeps the animation permanently "in effect", and CSS gives a
+running/held animation's computed value priority over *any* later
+inline-style or class-driven change to that same property — so every
+subsequent `element.style.transform=...` or `.classList.add('is-pressed')`
+was silently overridden back to the animation's own held value, forever.
+This was invisible in code review and only surfaced by testing: a
+brand-new, unrelated `<button class="auth-primary">` inserted into
+`.auth-card--anim` at runtime came up with `transform:
+matrix(1,0,0,1,0,12)` — exactly the entrance keyframe's *0%* state —
+proving the animation, not the inline style, was winning. The fix was
+`animation-fill-mode:backwards` instead of `both` on the affected rules,
+paired with an explicit plain `opacity:1` declared alongside —
+`backwards` still shows the hidden state during the `animation-delay`,
+but once the animation ends it hands control of `transform` back to the
+normal cascade, landing on that explicit resting rule (visually
+identical to the keyframe's 100% state, so no jump). `.auth-primary`
+still uses this pattern today; `.auth-property-visual` no longer needs
+it since it has no entrance animation left to guard against. Every other
+entrance-animated element (eyebrow, h1, description, icons, kicker,
+secure-login badge, role-picker, fields, options, divider, security
+note) keeps `both`, because nothing ever needs to move *them* again
+after entrance.
 
-Floating paths (item 4, third rewrite) — REMOVED and replaced (4th
-rewrite, this round): the 26-arc SVG layer described below is gone
-from both `app.js` and `styles.css`. In its place, two independent
-layers, both `z-index:2` — strictly above `.auth-property-visual`
-(`z-index:1`, still opacity:1, untouched) and strictly below the
-text/logo layer (`z-index:3`):
+Floating paths (item 4) — REMOVED (3rd rewrite's 26-arc SVG layer,
+4th rewrite's grid-line draw-in — both gone). Left standing (5th
+rewrite, this round): **one** layer, `z-index:2` — strictly above
+`.auth-property-visual` (`z-index:1`, still opacity:1, untouched) and
+strictly below the text/logo layer (`z-index:3`).
 
-1. **Rising particles** — a single `<canvas class="auth-particles">`,
-   created by the one JS function `buildAuthParticles()` (app.js) and
-   never by a build step or an npm dependency. Particle count scales
-   as `canvasArea/9000` (the brief's own formula), each particle a
-   small circle (`r:0.6–1.7px`) drifting upward at `0.05–0.30px/frame`
-   and wrapping back in from the bottom once it passes the top edge —
-   a plain per-frame `requestAnimationFrame` loop, no physics library.
-   Color is the same locked `#9DDCC4` at `0.15–0.35` random alpha per
-   particle (not the reference's white), composited with
-   `mix-blend-mode:screen` so it reads as light glinting off the scene
-   rather than a flat sprite sitting on top of the photo. The canvas is
-   sized in real (`devicePixelRatio`-scaled) pixels for crispness and
-   is fully recomputed on `resize`. It is deliberately never created at
-   all — not created-then-hidden — when `prefers-reduced-motion:
-   reduce` matches, or when the viewport is at or below the same
-   980px breakpoint that already hides `.auth-visual` on mobile
-   (matching that existing, untouched rule rather than inventing a new
-   one), so no background animation loop ever runs where nobody could
-   see it.
-2. **Grid-line draw-in** — six fixed `<span class="auth-grid-line h|v">`
-   elements, written directly into `index.html` (three horizontal,
-   three vertical; position and `--line-delay` custom property set
-   inline per span) because the count and stagger are fixed by the
-   brief (`.12s/.22s/.32s/.42s/.54s/.66s`), not derived at runtime —
-   so, unlike the particles, this needed no JS at all. Each line
-   `scaleX`/`scaleY`s from 0→1 over 0.85s
-   (`cubic-bezier(.22,.61,.36,1)`) once, `animation-fill-mode:forwards`
-   (not `infinite`), then a one-shot gradient "shimmer" sweeps along it
-   via a `::after` pseudo-element whose `animation-delay` is
-   `calc(var(--line-delay) + .85s)` — chained off the draw-in's own
-   delay+duration rather than a second hand-typed number, so the two
-   animations can never drift out of sync if the draw duration changes
-   later. Color is the same `#9DDCC4` at low alpha
-   (`0.16` base, `0.6` at the shimmer's peak). Under
-   `prefers-reduced-motion:reduce` the lines skip straight to their
-   drawn end state (`transform:scaleX(1) scaleY(1)`) with the shimmer
-   pseudo-element suppressed entirely, rather than freezing mid-draw.
+**Rising particles, tuned down** — a single `<canvas class="auth-particles">`,
+created by the one JS function `buildAuthParticles()` (app.js) and
+never by a build step or an npm dependency. Deliberately much sparser
+than the 4th rewrite: particle count scales as `canvasArea/17000` (was
+`/9000`), alpha is `0.06–0.16` random per particle (was `0.15–0.35`),
+upward drift is `0.03–0.15px/frame` (was `0.05–0.30`) — the brief's own
+framing was "screensaver → premium calm", so density/opacity/speed all
+moved down together rather than any single value being pushed to an
+extreme. Each particle a small circle (`r:0.6–1.7px`) drifting upward
+and wrapping back in from the bottom once it passes the top edge — a
+plain per-frame `requestAnimationFrame` loop, no physics library. Color
+is the same locked `#9DDCC4` (not the reference's white), composited
+with `mix-blend-mode:screen` so it reads as light glinting off the
+scene rather than a flat sprite sitting on top of the photo. The canvas
+is sized in real (`devicePixelRatio`-scaled) pixels for crispness and
+is fully recomputed on `resize`. It is deliberately never created at
+all — not created-then-hidden — when `prefers-reduced-motion: reduce`
+matches, or when the viewport is at or below the same 980px breakpoint
+that already hides `.auth-visual` on mobile (matching that existing,
+untouched rule rather than inventing a new one), so no background
+animation loop ever runs where nobody could see it.
 
-Both layers are pure CSS/canvas additions with no new npm dependency.
+**Grid-line draw-in — REMOVED.** The 4th rewrite's six `<span
+class="auth-grid-line h|v">` elements (in `index.html`) and their
+`authLineDrawH/V`/`authLineShimmerH/V` keyframes (in `styles.css`) are
+gone entirely — no markup, no CSS rule, no keyframe left behind.
+
+**Building photo — now fully static, by design, in every state.**
+`.auth-property-visual` was removed from *both* remaining sources of
+motion on this panel: (1) the one-time `authBuildingIn` entrance
+keyframe (`scale(1.025)→scale(1)`, `opacity:0→1`) it used to play on
+page load is deleted along with its rule — the photo now simply uses
+its plain CSS (`opacity` unset = `1`), so it's on-screen at full
+opacity and scale from the very first frame, no fade/scale-in at all;
+(2) the desktop pointer-parallax (item 16, `initAuthPointerParallax`
+in app.js) no longer targets it — `.auth-quote`/`.auth-brand-row`
+still drift a few px toward the cursor, but the photo's own
+`photo.style.transform` assignment was deleted from that function, so
+moving the mouse no longer shifts it either. Net result: the photo
+never scales, fades, or translates under any circumstance — page load,
+mouse movement, or otherwise — only the sparse particle layer drifting
+in front of it moves.
 
 Superseded description (kept for the historical record, not current
-behavior): a single 26-arc layer, concentric-ish elliptical arcs
-fanned around one anchor point near where the building photo begins,
-via the golden angle (137.508°×i, deterministic, not `Math.random()` —
-identical on every page load) — reading as architectural contour
-lines / a compass rose rather than directional "rain" (the second
-iteration's look) or two crossing diagonal layers (the first
-correction's look). Each `<path>` carried `pathLength="100"` (an SVG
-attribute, not a JS convenience) so the shared `@keyframes` could use
-one literal 0–100 dasharray/dashoffset scale regardless of that path's
-real on-screen length, which varied by radius (70–340, banded by
-index). Motion: dasharray grew from a 6%-length spark to a 50%-length
-segment while dashoffset slid it and opacity breathed 0.08→0.28, via
-`animation-direction:alternate` on one authored 0%→100% keyframe (the
-"comet" technique — see the note below on why). Duration was
-`22+i*0.35`s. Layer sat at `z-index:0`, strictly behind
-`.auth-property-visual` (`z-index:1`).
+behavior — 3rd rewrite's floating-paths): a single 26-arc layer,
+concentric-ish elliptical arcs fanned around one anchor point near
+where the building photo begins, via the golden angle (137.508°×i,
+deterministic, not `Math.random()` — identical on every page load) —
+reading as architectural contour lines / a compass rose rather than
+directional "rain" (the second iteration's look) or two crossing
+diagonal layers (the first correction's look). Each `<path>` carried
+`pathLength="100"` (an SVG attribute, not a JS convenience) so the
+shared `@keyframes` could use one literal 0–100 dasharray/dashoffset
+scale regardless of that path's real on-screen length, which varied by
+radius (70–340, banded by index). Motion: dasharray grew from a
+6%-length spark to a 50%-length segment while dashoffset slid it and
+opacity breathed 0.08→0.28, via `animation-direction:alternate` on one
+authored 0%→100% keyframe (the "comet" technique — see the note below
+on why). Duration was `22+i*0.35`s. Layer sat at `z-index:0`, strictly
+behind `.auth-property-visual` (`z-index:1`).
 
 Micro-interactions (items 5–15) are additive CSS `:hover`/`:active`/
 `:focus-within` rules plus small JS classes that get added and removed

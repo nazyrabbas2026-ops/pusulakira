@@ -683,16 +683,16 @@ function bindNavDrawer(hamburgerBtn,navEl){if(!hamburgerBtn||!navEl||hamburgerBt
 window.matchMedia('(min-width:1280px)').addEventListener('change',event=>{if(event.matches)document.querySelectorAll('.sidebar.drawer-open,.tenant-sidebar.drawer-open').forEach(el=>closeNavDrawer(el,{restoreFocus:false}))});
 {let adminTopbar=document.querySelector('.topbar');if(adminTopbar&&!$('adminNavHamburger')){let hamburger=document.createElement('button');hamburger.type='button';hamburger.id='adminNavHamburger';hamburger.className='nav-hamburger';hamburger.setAttribute('aria-label',tr('common.menu'));hamburger.innerHTML='<i data-icon="menu"></i>';adminTopbar.insertBefore(hamburger,adminTopbar.firstChild);paintIcons(adminTopbar);bindNavDrawer(hamburger,document.querySelector('.app-shell .sidebar'))}}
 
-// Giriş ekranı — bina fotoğrafının (z-index:1) üstünde, ince ve yavaş yükselen parçacıklar.
-// Statik ızgara çizgileri (index.html + styles.css, JS gerektirmiyor) ile birlikte çalışan
-// TEK JS fonksiyonu bu: tek <canvas>, tek rAF döngüsü. Yoğunluk canvas alanı/9000 ile
-// ölçekleniyor (referanstaki formül). Renk kilitli mint #9DDCC4, opaklık 0.15-0.35 arası
-// rastgele — referansın beyazı (rgba(250,250,250,...)) DEĞİL. mix-blend-mode:screen
-// (styles.css) bina fotoğrafını ezmeden hafif bir "ışıltı" hissi veriyor. Mobilde
-// (.auth-visual ≤980px'de zaten display:none) canvas'ın kendisi hiç OLUŞTURULMUYOR —
-// sadece CSS ile gizlemek yerine, gereksiz bir arka plan rAF döngüsünün hiç başlamaması
-// için burada açık bir matchMedia kontrolü var. Aynı şekilde prefers-reduced-motion'da da
-// canvas hiç kurulmuyor (statik bir son-kare göstermeye gerek yok, panel zaten resim+metin
+// Giriş ekranı — bina fotoğrafının (z-index:1) üstünde, çok seyrek ve güçlükle fark edilen
+// yukarı süzülen parçacıklar. Tek JS fonksiyonu: tek <canvas>, tek rAF döngüsü. Yoğunluk
+// canvas alanı/17000 ile ölçekleniyor (bir önceki turdaki /9000'den kasıtlı olarak seyrekleştirildi
+// — "screensaver" değil "premium sakinlik" hedefi). Renk kilitli mint #9DDCC4, opaklık 0.06-0.16
+// arası rastgele (önceki turun 0.15-0.35'inden düşürüldü), hız 0.03-0.15px/kare (önceki turun
+// 0.05-0.30'undan düşürüldü). mix-blend-mode:screen (styles.css) bina fotoğrafını ezmeden ince
+// bir ışıltı hissi veriyor. Mobilde (.auth-visual ≤980px'de zaten display:none) canvas'ın kendisi
+// hiç OLUŞTURULMUYOR — sadece CSS ile gizlemek yerine, gereksiz bir arka plan rAF döngüsünün hiç
+// başlamaması için burada açık bir matchMedia kontrolü var. Aynı şekilde prefers-reduced-motion'da
+// da canvas hiç kurulmuyor (statik bir son-kare göstermeye gerek yok, panel zaten resim+metin
 // olarak tam okunaklı).
 function buildAuthParticles(){
   const host=document.querySelector('.auth-visual');
@@ -706,14 +706,14 @@ function buildAuthParticles(){
   const ctx=canvas.getContext('2d');
   const dpr=Math.min(window.devicePixelRatio||1,2);
   let w=0,h=0,particles=[];
-  const makeParticle=()=>({x:Math.random()*w,y:Math.random()*h,r:0.6+Math.random()*1.1,vy:0.05+Math.random()*0.25,o:0.15+Math.random()*0.20});
+  const makeParticle=()=>({x:Math.random()*w,y:Math.random()*h,r:0.6+Math.random()*1.1,vy:0.03+Math.random()*0.12,o:0.06+Math.random()*0.10});
   function resize(){
     const rect=host.getBoundingClientRect();
     w=rect.width;h=rect.height;
     canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
     canvas.style.width=w+'px';canvas.style.height=h+'px';
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    const count=Math.max(12,Math.round((w*h)/9000));
+    const count=Math.max(8,Math.round((w*h)/17000));
     particles=Array.from({length:count},makeParticle);
   }
   resize();
@@ -783,7 +783,9 @@ function enhanceAuthMicroInteractions(){
 // (Opsiyonel, madde 16) Masaüstünde çok hafif işaretçi parallax'ı — sadece transform,
 // rAF ile throttle'lı (sürekli JS state update yok), ince (max 6px) hareket. Sadece gerçek
 // fare imleci olan geniş masaüstünde çalışır; dokunmatik/mobil/tablet ve reduced-motion'da
-// hiç bağlanmaz. Performans sorunlu görünürse bu blok tek başına kaldırılabilir.
+// hiç bağlanmaz. Bina fotoğrafı (.auth-property-visual) bu turda hedeflerden ÇIKARILDI —
+// "fotoğraf hiçbir durumda kıpırdamasın" isteğiyle, sadece .auth-quote/.auth-brand-row
+// fareyle hafifçe kayıyor. Performans sorunlu görünürse bu blok tek başına kaldırılabilir.
 (function initAuthPointerParallax(){
   const canRun=()=>matchMedia('(pointer:fine)').matches&&matchMedia('(min-width:1181px)').matches&&!matchMedia('(prefers-reduced-motion:reduce)').matches;
   if(!canRun())return;
@@ -791,8 +793,7 @@ function enhanceAuthMicroInteractions(){
   let raf=null,tx=0,ty=0;
   const apply=()=>{
     raf=null;
-    const photo=visual.querySelector('.auth-property-visual'),quote=visual.querySelector('.auth-quote'),brand=visual.querySelector('.auth-brand-row');
-    if(photo)photo.style.transform=`translate(${tx*0.6}px,${ty*0.6}px)`;
+    const quote=visual.querySelector('.auth-quote'),brand=visual.querySelector('.auth-brand-row');
     if(quote)quote.style.transform=`translate(${tx*-0.3}px,${ty*-0.3}px)`;
     if(brand)brand.style.transform=`translate(${tx*-0.15}px,${ty*-0.15}px)`;
   };

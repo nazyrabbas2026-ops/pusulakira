@@ -325,30 +325,15 @@ body.drawer-locked{overflow:hidden}
 }
 
 /* Giriş ekranı — bina fotoğrafının (z-index:1) ÜSTÜNDE, metin/logo katmanının (z-index:3)
-   ALTINDA iki katman: (1) statik HTML'de duran 3+3 "çizilen" ince ızgara çizgisi (bu blok,
-   duraklı @keyframes + var(--line-delay) — JS'e gerek yok, sayı/gecikme sabit olduğundan
-   index.html'e doğrudan yazıldı), sayfa yüklenince BİR KEZ scaleX/scaleY 0→1 "çiziliyormuş"
-   gibi belirip bir kerelik shimmer geçişiyle sabitleniyor (infinite DEĞİL); (2) app.js'teki
-   tek fonksiyonun (buildAuthParticles) oluşturduğu <canvas>, sürekli yukarı süzülen ince
-   parçacıklar — bkz. app.js'teki yorum. İkisi de #9DDCC4 (kilitli mint) kullanıyor, ikisi de
-   pointer-events:none. Reduced-motion: çizgiler son (çizili) halinde donuyor, shimmer hiç
-   oynamıyor; canvas'ın kendisi (app.js) reduced-motion'da hiç oluşturulmuyor. */
-.auth-grid-lines{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden}
-.auth-grid-line{position:absolute;transform-origin:center}
-.auth-grid-line.h{left:0;right:0;height:1px;background:rgba(157,220,196,.16);transform:scaleX(0);animation:authLineDrawH .85s cubic-bezier(.22,.61,.36,1) var(--line-delay,0s) forwards}
-.auth-grid-line.v{top:0;bottom:0;width:1px;background:rgba(157,220,196,.16);transform:scaleY(0);animation:authLineDrawV .85s cubic-bezier(.22,.61,.36,1) var(--line-delay,0s) forwards}
-.auth-grid-line:after{content:"";position:absolute;opacity:0;animation-duration:.7s;animation-timing-function:ease;animation-fill-mode:forwards;animation-delay:calc(var(--line-delay,0s) + .85s)}
-.auth-grid-line.h:after{top:0;left:-40%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(157,220,196,.6),transparent);animation-name:authLineShimmerH}
-.auth-grid-line.v:after{left:0;top:-40%;width:100%;height:40%;background:linear-gradient(180deg,transparent,rgba(157,220,196,.6),transparent);animation-name:authLineShimmerV}
-@keyframes authLineDrawH{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
-@keyframes authLineDrawV{0%{transform:scaleY(0)}100%{transform:scaleY(1)}}
-@keyframes authLineShimmerH{0%{left:-40%;opacity:0}15%{opacity:1}100%{left:100%;opacity:0}}
-@keyframes authLineShimmerV{0%{top:-40%;opacity:0}15%{opacity:1}100%{top:100%;opacity:0}}
+   ALTINDA, TEK katman: app.js'teki tek fonksiyonun (buildAuthParticles) oluşturduğu
+   <canvas>, çok seyrek/ince, güçlükle fark edilen yukarı süzülen parçacıklar (bkz. app.js'teki
+   yorum — yoğunluk/opaklık/hız bu turda kasıtlı olarak düşürüldü, "screensaver" değil "premium
+   sakinlik" hedefleniyor). Önceki turun çizilen ızgara çizgileri (6 span + shimmer, REMOVED)
+   ve ondan önceki floating-paths (REMOVED) katmanları kaldırıldı — sol panelde artık sabit
+   bina fotoğrafı + bu tek, çok hafif parçacık katmanı dışında hareket eden hiçbir şey yok.
+   #9DDCC4 (kilitli mint), pointer-events:none, canvas kendisi reduced-motion'da app.js
+   tarafından hiç oluşturulmuyor (ek bir CSS kuralına gerek yok). */
 .auth-particles{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;mix-blend-mode:screen}
-@media(prefers-reduced-motion:reduce){
-  .auth-grid-line{animation:none!important;transform:scaleX(1) scaleY(1)!important}
-  .auth-grid-line:after{animation:none!important;display:none}
-}
 
 /* ================================================================================
    GİRİŞ EKRANI — profesyonel micro-interaction sistemi (vanilla CSS/JS, Framer Motion
@@ -371,25 +356,27 @@ body.drawer-locked{overflow:hidden}
 }
 
 /* ---- 1/2/3/13/14. Sayfa girişi (bir kez, "--anim" class'ı app.js'te tek sefer eklenir).
-   .auth-brand-row, .auth-property-visual VE .auth-primary İSTİSNA: fill-mode "backwards"
-   (both DEĞİL) — bekleme (delay) sırasında gizli başlangıç durumunu gösterir ama animasyon
-   BİTİNCE transform kontrolünü normal cascade'e bırakır. Neden: "both" fill-mode transform'u
-   KALICI olarak animasyon katmanında kilitler — animasyon bittikten SONRA bile, çünkü "both"
-   animasyonu süresiz "etkin" sayar. Bu üç eleman entrance'tan SONRA da kendi transform'unu
-   kullanmak zorunda: brand-row/property-visual opsiyonel işaretçi parallax'ının (madde 16,
-   app.js) hedefi; .auth-primary ise hover/:active/.is-pressed/.is-loading ile transform
-   kullanıyor (madde 9). Bunu geç fark ettik: yeni bir test button'ı .auth-card--anim içine
-   eklendiğinde bile authCardPrimaryIn keyframe'inin %0 durumuna (translateY(12px)) kilitlendiğini
-   görünce anladık — getComputedStyle DOĞRUYDU, transform gerçekten hiç değişmiyordu; sebep
-   "both" fill-mode'un JS'in sonraki her transform atamasını sessizce geçersiz kılmasıydı.
-   Aşağıdaki açık "opacity:1" satırları animasyon bitince devreye giren, keyframe'in %100
-   durumuyla BİREBİR aynı dinlenme halini sağlıyor — görsel bir sıçrama olmadan. ---- */
+   .auth-property-visual (bina fotoğrafı) bu turda entrance sisteminden TAMAMEN ÇIKARILDI —
+   artık hiçbir animation kuralı yok, sadece normal CSS'iyle (opacity belirtilmemiş = 1)
+   render olur: sayfa yüklenirken fade/scale yapmaz, tamamen sabit görünür. .auth-brand-row
+   VE .auth-primary İSTİSNA kalmaya devam ediyor: fill-mode "backwards" (both DEĞİL) —
+   bekleme (delay) sırasında gizli başlangıç durumunu gösterir ama animasyon BİTİNCE transform
+   kontrolünü normal cascade'e bırakır. Neden: "both" fill-mode transform'u KALICI olarak
+   animasyon katmanında kilitler — animasyon bittikten SONRA bile, çünkü "both" animasyonu
+   süresiz "etkin" sayar. Bu iki eleman entrance'tan SONRA da kendi transform'unu kullanmak
+   zorunda: brand-row opsiyonel işaretçi parallax'ının (madde 16, app.js) hedefi; .auth-primary
+   ise hover/:active/.is-pressed/.is-loading ile transform kullanıyor (madde 9). Bunu geç fark
+   ettik: yeni bir test button'ı .auth-card--anim içine eklendiğinde bile authCardPrimaryIn
+   keyframe'inin %0 durumuna (translateY(12px)) kilitlendiğini görünce anladık — getComputedStyle
+   DOĞRUYDU, transform gerçekten hiç değişmiyordu; sebep "both" fill-mode'un JS'in sonraki her
+   transform atamasını sessizce geçersiz kılmasıydı. Aşağıdaki açık "opacity:1" satırı animasyon
+   bitince devreye giren, keyframe'in %100 durumuyla BİREBİR aynı dinlenme halini sağlıyor —
+   görsel bir sıçrama olmadan. ---- */
 .auth-visual.auth-visual--anim .auth-brand-row{opacity:1;animation:authEnterUp var(--motion-entrance) var(--motion-ease-out) .02s backwards}
 .auth-visual.auth-visual--anim .auth-quote .eyebrow{animation:authEnterUp var(--motion-entrance) var(--motion-ease-out) .1s both}
 .auth-visual.auth-visual--anim .auth-quote h1{animation:authEnterUp var(--motion-entrance) var(--motion-ease-out) .18s both}
 .auth-visual.auth-visual--anim .auth-quote>p{animation:authEnterUp var(--motion-entrance) var(--motion-ease-out) .26s both}
 .auth-visual.auth-visual--anim .auth-features{animation:authEnterUp var(--motion-entrance) var(--motion-ease-out) .34s both}
-.auth-visual.auth-visual--anim .auth-property-visual{opacity:1;animation:authBuildingIn 1.4s var(--motion-ease-out) .1s backwards}
 
 .auth-card.auth-card--anim .auth-card-kicker{animation:authEnterUp var(--motion-entrance) var(--motion-ease-out) .04s both}
 .auth-card.auth-card--anim .secure-login{animation:authBadgeIn .5s var(--motion-ease-out) .1s both}
@@ -408,7 +395,6 @@ body.drawer-locked{overflow:hidden}
 .auth-card-wrap .auth-card.auth-card--anim{animation:authCardIn .65s var(--motion-ease) both}
 
 @keyframes authEnterUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-@keyframes authBuildingIn{from{opacity:0;transform:scale(1.025)}to{opacity:1;transform:scale(1)}}
 @keyframes authCardIn{from{opacity:0;transform:translate(18px,0) scale(.99)}to{opacity:1;transform:translate(0,0) scale(1)}}
 @keyframes authCardPrimaryIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes authBadgeIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
@@ -429,9 +415,11 @@ body.drawer-locked{overflow:hidden}
 /* ---- 11. Beni hatırla checkbox "pop" ---- */
 @keyframes authCheckPop{0%{transform:scale(.7)}70%{transform:scale(1.08)}100%{transform:scale(1)}}
 
-/* ---- 16 (opsiyonel). Masaüstü işaretçi paraллax — JS max ±6px translate uyguluyor,
-   burada sadece pürüzsüzleştirici transition var; JS'in kendisi rAF ile throttle'lı. ---- */
-.auth-visual .auth-property-visual,
+/* ---- 16 (opsiyonel). Masaüstü işaretçi parallax — SADECE .auth-quote/.auth-brand-row için;
+   .auth-property-visual (bina fotoğrafı) bu turda parallax hedeflerinden çıkarıldı, artık
+   fareyle de hiç kıpırdamıyor (app.js'te photo.style.transform satırı kaldırıldı). JS max
+   ±6px translate uyguluyor, burada sadece pürüzsüzleştirici transition var; JS'in kendisi
+   rAF ile throttle'lı. ---- */
 .auth-visual .auth-quote,
 .auth-visual .auth-brand-row{transition:transform 60ms linear}
 
@@ -443,7 +431,6 @@ body.drawer-locked{overflow:hidden}
   .auth-visual.auth-visual--anim .auth-quote h1,
   .auth-visual.auth-visual--anim .auth-quote>p,
   .auth-visual.auth-visual--anim .auth-features,
-  .auth-visual.auth-visual--anim .auth-property-visual,
   .auth-card.auth-card--anim .auth-card-kicker,
   .auth-card.auth-card--anim .secure-login,
   .auth-card.auth-card--anim .password-auth>h2,
@@ -460,7 +447,7 @@ body.drawer-locked{overflow:hidden}
   }
   .auth-visual:before,.auth-card-wrap:before{animation:none!important}
   .role-icon.role-icon-pop,.password-visibility i.icon-swap,.auth-options input:checked,.auth-primary:active,.auth-primary.is-pressed{animation:none!important;transform:none!important}
-  .auth-visual .auth-property-visual,.auth-visual .auth-quote,.auth-visual .auth-brand-row{transition:none!important;transform:none!important}
+  .auth-visual .auth-quote,.auth-visual .auth-brand-row{transition:none!important;transform:none!important}
 }
 
 /* ---- Mobil (<768px): .auth-visual zaten display:none (Faz 6) — floating paths, building
