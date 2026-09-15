@@ -681,22 +681,40 @@ function bindNavDrawer(hamburgerBtn,navEl){if(!hamburgerBtn||!navEl||hamburgerBt
 window.matchMedia('(min-width:1280px)').addEventListener('change',event=>{if(event.matches)document.querySelectorAll('.sidebar.drawer-open,.tenant-sidebar.drawer-open').forEach(el=>closeNavDrawer(el,{restoreFocus:false}))});
 {let adminTopbar=document.querySelector('.topbar');if(adminTopbar&&!$('adminNavHamburger')){let hamburger=document.createElement('button');hamburger.type='button';hamburger.id='adminNavHamburger';hamburger.className='nav-hamburger';hamburger.setAttribute('aria-label',tr('common.menu'));hamburger.innerHTML='<i data-icon="menu"></i>';adminTopbar.insertBefore(hamburger,adminTopbar.firstChild);paintIcons(adminTopbar);bindNavDrawer(hamburger,document.querySelector('.app-shell .sidebar'))}}
 
-// Giriş ekranı — sakin arka plan hareketi: 36 paralel, yavaşça akan SVG çizgisi.
-// Tek üretim fonksiyonu, tek SVG yapısı; CSS tarafında tek @keyframes (styles.css).
-// Sadece .auth-visual (masaüstü/tablet marka paneli) içine ekleniyor; mobilde bu panel
-// zaten display:none olduğundan animasyon orada hiç render edilmiyor, ekstra kod gerekmez.
+// Giriş ekranı — sakin arka plan hareketi: iki katman, 36'şar geniş çapraz SVG çizgisi,
+// birbirine ZIT yönde akıyor (referans "FloatingPaths" bileşeninin position={1}/{-1} ikilisine
+// karşılık gelir). Tek üretim fonksiyonu (buildAuthFloatingPaths) her iki katmanı da aynı iç
+// `layer()` yardımcısından parametreyle üretir; CSS tarafında tek @keyframes (styles.css).
+// Arka katman (position=1, daha kalın) bina fotoğrafının ARKASINDA, ön katman (position=-1,
+// çok ince/soluk) fotoğrafın ÖNÜNDE ama metnin ARKASINDA durur — bu derinlik farkı çizgilerin
+// binanın içinden geçtiği hissini verir. Sadece .auth-visual içine ekleniyor; mobilde panel
+// zaten display:none olduğundan animasyon orada hiç render edilmiyor.
 function buildAuthFloatingPaths(){
   const host=document.querySelector('.auth-visual');
-  if(!host||$('authFloatingPaths'))return;
-  const paths=Array.from({length:36},(_,i)=>{
-    const x=-80+i*16;
-    const d=`M${x} -100C${x-60} 220 ${x+220} 340 ${x+70} 580C${x-60} 780 ${x+260} 840 ${x+150} 1020`;
-    const opacity=(0.035+i*0.0032).toFixed(3);
-    const width=(0.5+i*0.025).toFixed(2);
-    const duration=(20+(i*0.28)%10).toFixed(1);
-    const delay=(-(i*0.55)).toFixed(1);
-    return `<path d="${d}" stroke="#9DDCC4" stroke-width="${width}" stroke-opacity="${opacity}" style="--auth-path-duration:${duration}s;--auth-path-delay:${delay}s"/>`;
-  }).join('');
-  host.insertAdjacentHTML('afterbegin',`<svg id="authFloatingPaths" class="auth-floating-paths" viewBox="0 0 500 900" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>`);
+  if(!host||host.querySelector('.auth-floating-paths'))return;
+  const hash=n=>{const s=Math.sin(n*12.9898)*43758.5453;return s-Math.floor(s)};
+  const layer=(position,opts)=>{
+    const y0=-190,y1=1200,driftX=560*position;
+    const paths=Array.from({length:36},(_,i)=>{
+      const x0=-160+i*18;
+      const cx1=x0+driftX*0.28,cy1=y0+(y1-y0)*0.34;
+      const cx2=x0+driftX*0.62,cy2=y0+(y1-y0)*0.7;
+      const xEnd=x0+driftX;
+      const d=`M${x0.toFixed(0)} ${y0}C${cx1.toFixed(0)} ${cy1.toFixed(0)} ${cx2.toFixed(0)} ${cy2.toFixed(0)} ${xEnd.toFixed(0)} ${y1}`;
+      const frac=i/35;
+      const opacity=(opts.opMin+frac*(opts.opMax-opts.opMin)).toFixed(3);
+      const width=(opts.wMin+frac*(opts.wMax-opts.wMin)).toFixed(2);
+      const r1=hash(i+position*7.3),r2=hash(i*3.1+position*1.7);
+      const duration=(14+r1*8).toFixed(1);
+      const delay=(-(r2*duration)).toFixed(1);
+      return `<path d="${d}" stroke="#9DDCC4" stroke-width="${width}" stroke-opacity="${opacity}" style="--auth-path-duration:${duration}s;--auth-path-delay:${delay}s"/>`;
+    }).join('');
+    return `<svg id="${opts.id}" class="auth-floating-paths auth-floating-paths--${opts.cls}" viewBox="0 0 720 900" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>`;
+  };
+  const back=layer(1,{id:'authFloatingPathsBack',cls:'back',opMin:.05,opMax:.15,wMin:.6,wMax:1.4});
+  const front=layer(-1,{id:'authFloatingPathsFront',cls:'front',opMin:.04,opMax:.08,wMin:.35,wMax:.7});
+  host.insertAdjacentHTML('afterbegin',back);
+  const photo=host.querySelector('.auth-property-visual');
+  (photo||host).insertAdjacentHTML(photo?'afterend':'beforeend',front);
 }
 buildAuthFloatingPaths();

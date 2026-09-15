@@ -1493,32 +1493,66 @@ reload-regression check (Faz 4's loadAdminData fix) re-run at all 4
 widths.
 
 LOGIN — FLOATING PATHS BACKGROUND: `.auth-visual` (the dark left marketing
-panel) gets a calm animated layer — 36 parallel curved SVG lines, drawn
-with a long stroke-dasharray (900/60) whose stroke-dashoffset animates
-over 20-30s per-path durations, so each reads as a near-continuous
-flowing curve rather than a dotted trail. One shared `#authFloatingPaths`
-SVG built by one JS function (`buildAuthFloatingPaths`) and one CSS
-block/`@keyframes` — no per-path CSS rules; each path only carries its
-own `--auth-path-duration`/`--auth-path-delay` custom properties inline.
-Adapted from a widely-used React/framer-motion "FloatingPaths" reference
-into plain SVG + CSS, zero new dependencies. Stroke is `#9DDCC4` (locked
-mint) at 0.035–0.15 opacity — no new color introduced. Layer sits at
-z-index:1, inserted as `.auth-visual`'s first child, so both the
-building photo and the marketing text (which already carries its own
-z-index:1) paint above it — confirmed via `elementFromPoint` at the
-headline's center, not assumed. Respects `prefers-reduced-motion:
-reduce` (animation stops, lines stay visible as a static pattern).
-`.auth-visual` is already `display:none` at ≤980px and ≤767px (two
-separate pre-existing rules, not touched here) — mobile and most of
-what would be "tablet" width already hide the whole panel, so the
-animation naturally never renders or runs there with no extra media
-query needed. Deliberately shipped with ONLY this one effect, not the
-optional second "rising particles" layer the brief allowed: the brief's
-own §4 principle ("decoration must never compete with itself, let alone
-content") argues against stacking two independent low-opacity animated
-layers in the same small panel, and a second animated layer would double
-the CPU/battery cost for a marketing panel that is explicitly disabled
-below 980px anyway. One well-tuned effect over two competing ones.
+panel) gets a calm animated layer adapted from a widely-used React/
+framer-motion "FloatingPaths" reference into plain SVG + CSS, zero new
+dependencies. Two mirrored 36-line groups (`.auth-floating-paths--back`,
+`--front`), matching the reference's `position={1}`/`position={-1}` pair:
+both share the same top-edge fan of start points but drift 560 units in
+OPPOSITE horizontal directions before exiting off-canvas bottom, so the
+two groups visibly cross in a wide corner-to-corner weave rather than
+sitting parallel — proven via a temporary high-contrast (red/yellow)
+debug render, not assumed. One JS function (`buildAuthFloatingPaths`)
+generates both layers through a shared inner `layer(position, opts)`
+helper; one CSS `@keyframes` block drives both (no per-path or per-layer
+duplicate rules). Depth: `--back` (z-index:0, thicker 0.6–1.4px strokes)
+sits strictly behind `.auth-property-visual` (z-index:1); `--front`
+(z-index:2, thinner 0.35–0.7px strokes, fainter 0.04–0.08 opacity) sits
+above the photo but below the marketing text (z-index:3) — three
+distinct z-index values, no DOM-order tie-breaking. Motion is a
+"comet" — animation-direction:alternate plays one authored 0%→100%
+keyframe forward then automatically reverses it (no hand-authored
+back-half, no seam): stroke-dasharray grows a visible segment from 6%
+to 50% of the path's own length while stroke-dashoffset slides it
+along, and opacity breathes 0.45→1 in the same keyframe (answers both
+"ileri-geri salınım" and "nefes alan opaklık" from the brief in one
+mechanism). Duration is 14–22s per path (`--auth-path-duration`), each
+path's duration/delay pseudo-randomized via a sine-hash so the 72 lines
+desync instead of pulsing in lockstep. Stroke is `#9DDCC4` (locked mint)
+at 0.04–0.15 opacity — no new color introduced. Respects
+`prefers-reduced-motion: reduce` (animation stops entirely, lines stay
+visible as a static pattern). `.auth-visual` is already `display:none`
+at ≤980px and ≤767px (two separate pre-existing rules, not touched
+here) — mobile and most of what would be "tablet" width already hide
+the whole panel, so both layers naturally never render or run there
+with no extra media query needed. Deliberately shipped with only these
+two layers, not a third "rising particles" layer the brief allowed as
+optional: with two already-crossing animated groups in a small panel,
+a third would start competing with itself, against the brief's own §4
+principle, for a marketing panel that's disabled below 980px anyway.
+
+Note on an earlier draft of this effect: a first pass used a single
+non-mirrored layer with a repeating small-period dash pattern
+(stroke-dasharray "150 46") animating a symmetric 0→-1700→0
+stroke-dashoffset. It was numerically provably moving but visually
+static in screenshots for two compounding reasons — the dash period
+happened to nearly alias against a 2s sampling interval, and more
+fundamentally a small-period dash at 0.04–0.15 opacity produces too
+small a per-frame contrast delta for the human eye to register in a
+still image, even though live motion at that same contrast would read
+fine to a human's motion-specific visual pathways. The single-segment
+"comet" approach above was chosen specifically because it changes a
+large, structural fraction of the visible line per cycle (6%→50% of
+its length), which is unambiguous in both live viewing and stills.
+Also on that draft: animating `stroke-dasharray`/`stroke-dashoffset`
+via `calc(var(--custom-property) * fraction)` inside `@keyframes` did
+not interpolate in testing (Chromium locked the computed value at the
+0% keyframe and only jumped at 100%) — confirmed by reading
+`getComputedStyle(...).strokeDasharray` at multiple time offsets, not
+assumed from the visual symptom alone. The fix was to bake literal
+pixel numbers into the keyframe (all 36 paths in a layer share one
+path length by construction, since only the horizontal start point
+varies) instead of computing them from a custom property at animation
+time.
 
 CONTRACT-ALERT COUNTDOWN COLOR: the "Sözleşme uyarıları" panel on
 Genel Bakış colors its remaining-days figure by urgency: under 30
