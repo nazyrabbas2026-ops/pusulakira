@@ -10,9 +10,11 @@ Node.js'in yerleşik `node:sqlite` modülü ve dosya tabanlı bir SQLite
 veritabanı ile çalışan, harici bir veritabanı sunucusu gerektirmeyen tek
 parça (frontend + API aynı süreçte) bir uygulamadır.
 
-**Tasarım Sistemi:** [`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md) dosyasına
-bakın — tüm ekranlar için kalıcı, tek doğru (single source of truth)
-renk/tipografi/bileşen referansıdır.
+**Davranış kılavuzu:** [`CLAUDE.md`](./CLAUDE.md) · **Tasarım sistemi:**
+[`DESIGN-SYSTEM.md`](./DESIGN-SYSTEM.md) — ikisi birbirini tamamlar:
+CLAUDE.md nasıl çalışılacağını (kodlama disiplini, doğrulama, veritabanı
+güvenliği), DESIGN-SYSTEM.md tüm ekranlar için kalıcı, tek doğru (single
+source of truth) renk/tipografi/bileşen referansını tanımlar.
 
 ## Gereksinimler
 
